@@ -29,11 +29,14 @@ public:
 
 	inline unsigned int GetUniformLocation(const std::string& name);
 
-	/* Sets a vec4 with 4 float values */
+	/* Sets 1 float value */
 	void SetUniform1f(const std::string& name, float v0);
 
-	/* Sets a vec4 with 4 float values */
+	/* Sets a vec2 with 2 float values */
 	void SetUniform2f(const std::string& name, float v0, float v1);
+
+	/* Sets a vec3 with 3 float values */
+	void SetUniform3f(const std::string& name, float v0, float v1, float v2);
 	
 	/* Sets a vec4 with 4 float values */
 	void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3);

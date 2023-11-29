@@ -18,7 +18,6 @@ void main()
 	ivec2 pixel_coords = ivec2(gl_GlobalInvocationID.xy);
 	//vec2 tex_size = imageSize(texture);
 
-
 	float c = evaluate(vec3(pixel_coords.x, pixel_coords.y, 0));
 
 	vec4 color = vec4(c, c, c, 1.0f);

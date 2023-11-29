@@ -7,10 +7,11 @@ uniform mat4 uModle;
 uniform mat4 uProj;
 uniform mat4 uView;
 uniform vec2 uScale;
+uniform vec4 uSplatPos;
 
-out vec2 texCoord;
 out vec4 FragPos;
 out vec2 Scale;
+out vec4 SplatPos;
 
 mat4 mScale = mat4(
     uScale.x,      0.0, 0.0, 0.0,
@@ -49,6 +50,6 @@ void main()
 
     gl_Position = uProj * mvMatrix * inPos;
     FragPos = mRot * uModle * vec4(inPos.xyz, 1.0);
-    texCoord = texPos;
     Scale = uScale;
+    SplatPos = uModle * vec4(uSplatPos.xyz, 1.0);
 }

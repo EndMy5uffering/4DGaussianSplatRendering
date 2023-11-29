@@ -119,37 +119,107 @@ private:
 class Splat2D
 {
 public:
-    Splat2D(const Splat2D&) = delete;
-    Splat2D(glm::vec3 pos, glm::vec2 v0, glm::vec2 v1, float l0, float l1, Shader &computeShader, Shader &renderShader) :
+    Splat2D(glm::vec3 pos, glm::vec2 v0, glm::vec2 v1, float l0, float l1, Shader &renderShader, glm::vec3 color) :
+        mPosition(pos),
+        mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
+        mVertFragShader(renderShader),
+        mSigma(glm::mat2(0.0f)),
+        ml0{sqrtf(l0)},
+        ml1{sqrtf(l1)},
+        mv0{ glm::normalize(v0) },
+        mv1{ glm::normalize(v1) },
+        mColor{color}
+    {
+        CalcAndSetSigma();
+    }
+
+    ~Splat2D() {}
+
+    void CalcAndSetSigma() 
+    {
+        glm::mat2 S(ml0, 0.0f, 0.0f, ml1);
+        glm::mat2 R(mv0, mv1);
+        mSigma = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
+    }
+
+    void Draw(Renderer r, Camera c, float rotAngle) 
+    { 
+        mVertFragShader.Bind();
+        mVertFragShader.SetUniform4f("uColor", mColor.r, mColor.g, mColor.b, 1.0);
+        mVertFragShader.SetUniform2f("uScale", ml0, ml1);
+        mVertFragShader.SetUniformMat2f("uSigma", mSigma);
+        mVertFragShader.SetUniform4f("uSplatPos", mPosition.x, mPosition.y, mPosition.z, 1.0f);
+        mVertFragShader.SetUniform1f("uRot", rotAngle);
+        mVertFragShader.SetUniformMat4f("uModle", mBillboard.GetTransform());
+        mVertFragShader.SetUniformMat4f("uProj", c.GetProjMatrix());
+        mVertFragShader.SetUniformMat4f("uView", c.GetViewMatrix());
+        mBillboard.Render(r);
+    }
+
+    void SetLambas(float l0, float l1) 
+    {
+        this->ml0 = l0;
+        this->ml1 = l1;
+        CalcAndSetSigma();
+    }
+
+    void SetVectors(glm::vec2 v0, glm::vec2 v1)
+    {
+        this->mv0 = glm::normalize(v0);
+        this->mv1 = glm::normalize(v1);
+        CalcAndSetSigma();
+    }
+
+    void SetColor(glm::vec3 color) 
+    {
+        this->mColor = color;
+    }
+
+private:
+    float ml0, ml1;
+    glm::vec3 mColor;
+    glm::vec2 mv0;
+    glm::vec2 mv1;
+    glm::vec3 mPosition;
+    glm::mat2 mSigma;
+    Shader mVertFragShader;
+    Geometry::Billboard mBillboard;
+};
+
+class Splat2DCompute
+{
+public:
+    Splat2DCompute(const Splat2D&) = delete;
+    Splat2DCompute(glm::vec3 pos, glm::vec2 v0, glm::vec2 v1, float l0, float l1, Shader& computeShader, Shader& renderShader) :
         mPosition(pos),
         mComputeTexture(Texture((int)(sqrtf(l0) * 10.0f), (int)(sqrtf(l1) * 10.0f), GL_RGBA32F, GL_RGBA, GL_FLOAT)),
         mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
         mComputeShader(computeShader),
         mVertFragShader(renderShader),
         mSigma(glm::mat2(0.0f)),
-        ml0{sqrtf(l0)},
-        ml1{sqrtf(l1)}
+        ml0{ sqrtf(l0) },
+        ml1{ sqrtf(l1) }
     {
         glm::mat2 S(ml0, 0.0f, 0.0f, ml1);
         glm::mat2 R(glm::normalize(v0), glm::normalize(v1));
         mSigma = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
 
-        /*
+        
         mComputeTexture.BindAsComputeTexture(0);
         mComputeShader.Bind();
         mComputeShader.SetUniformMat2f("uSigma", mSigma);
         mComputeShader.DispatchCompute(mComputeTexture);
-        */
+        
     }
 
-    ~Splat2D() {}
+    ~Splat2DCompute() {}
 
-    void Draw(Renderer r, Camera c, float rotAngle) 
-    { 
+    void Draw(Renderer r, Camera c, float rotAngle)
+    {
 
-        //mComputeTexture.Bind(0);
+        mComputeTexture.Bind(0);
         mVertFragShader.Bind();
-        //mVertFragShader.SetUniform1i("u_tex0", 0);
+        mVertFragShader.SetUniform1i("u_tex0", 0);
         mVertFragShader.SetUniform2f("uScale", ml0, ml1);
         mVertFragShader.SetUniformMat2f("uSigma", mSigma);
         mVertFragShader.SetUniform1f("uRot", rotAngle);

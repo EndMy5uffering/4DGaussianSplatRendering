@@ -28,7 +28,12 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
+#include "DebugMenu.h"
 
+float frand(float from, float to)
+{
+    return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
+}
 
 int SCREEN_WIDTH = 980;
 int SCREEN_HEIGHT = 680;
@@ -82,8 +87,8 @@ int main(void)
     ImGui::StyleColorsDark();
     //ImGui_ImplOpenGL3_Init(glsl_version);
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
+    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
     //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
     ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
     ImGui_ImplOpenGL3_Init();
@@ -117,19 +122,47 @@ int main(void)
     Geometry::Box background(glm::vec3(0.0f), glm::vec3(2500.0f));
 
     Shader SplatComputeShader;
-    SplatComputeShader.AddShaderSource("../Shader/Splat2dShader.GLSL", GL_COMPUTE_SHADER);
+    SplatComputeShader.AddShaderSource("../Shader/Splat2DComputeShader.GLSL", GL_COMPUTE_SHADER);
     SplatComputeShader.BuildShader();
     Shader SplatRenderShader;
     SplatRenderShader.AddShaderSource("../Shader/Splat2DFragShader.GLSL", GL_FRAGMENT_SHADER);
     SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader.BuildShader();
 
-    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, { 1.0f, 1.0f }, 32.0f, 2.0f, SplatComputeShader, SplatRenderShader);
+    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, { 1.0f, 1.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
+
+    size_t numOfSplats = 1000;
+    std::vector<Splat2D*> splats;
+    splats.reserve(numOfSplats);
+
+    float from = -20;
+    float to = 20;
+    for(size_t i = 0; i < numOfSplats; ++i)
+    {
+        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to) , 0.0f },
+            { frand(-1.0f, 1.0f), frand(-1.0f, 1.0f) },
+            { frand(-1.0f, 1.0f), frand(-1.0f, 1.0f) },
+            frand(-8.0f, 8.0f),
+            frand(-8.0f, 8.0f),
+            SplatRenderShader,
+            { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f) });
+        splats.push_back(s);
+    }
+
 
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+    DebugMenu::Menu01Data menuData;
+    menuData.rot = 0.0f;
+    menuData.v0 = 1.0f;
+    menuData.v1 = 0.0f;
+    menuData.v2 = 1.0f;
+    menuData.v3 = 1.0f;
+    menuData.l0 = 4.0f;
+    menuData.l1 = 2.0f;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -137,35 +170,32 @@ int main(void)
         /* Render here */
         renderer.Clear();
 
+        shader.Bind();
+        shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
+        
+        shader.SetUniform1i("u_tex0", 1);
+        shader.SetUniformMat4f("u_modle", background.GetTransform());
+        background.Render(renderer);
+
+        s2d.SetLambas(menuData.l0, menuData.l1);
+        s2d.SetVectors({ menuData.v0, menuData.v1 }, { menuData.v2, menuData.v3 });
+        s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
+        s2d.Draw(renderer, cam, menuData.rot*PI*2);
+
+
+        for (size_t i = 0; i < splats.size(); ++i)
+        {
+            splats[i]->Draw(renderer, cam, 0.0f);
+        }
+
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        static float rot = 0.0f;
+        DebugMenu::Menu_01(io, &menuData);
 
-        ImGui::Begin("4D Splats :D");
-        ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
-
-        ImGui::SliderFloat("Rotation", &rot, 0.0f, 1.0f);
-
-        ImGui::End();
-        
         //IMGUI
-
-
-        shader.Bind();
-        shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
-        
-        shader.SetUniform1i("u_tex0", 2);
-        shader.SetUniformMat4f("u_modle", background.GetTransform());
-        background.Render(renderer);
-
-        //shader.SetUniform1i("u_tex0", 3);
-        //shader.SetUniformMat4f("u_modle", testBillboard.GetTransform());
-        //testBillboard.Render(renderer);
-
-        s2d.Draw(renderer, cam, rot*PI*2);
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
@@ -180,10 +210,14 @@ int main(void)
 
     }
 
+    for (size_t i = 0; i < splats.size(); ++i) 
+    {
+        delete splats[i];
+    }
+
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
-
 
     glfwTerminate();
     return 0;
