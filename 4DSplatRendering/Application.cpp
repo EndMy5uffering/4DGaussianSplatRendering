@@ -144,8 +144,8 @@ int main(void)
 
         static float rot = 0.0f;
 
-        ImGui::Begin("Hello, world!");
-        ImGui::Text("Application average %.3f ms/frame (%.2f FPS)", 1000.0f / io.Framerate, io.Framerate);
+        ImGui::Begin("4D Splats :D");
+        ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
 
         ImGui::SliderFloat("Rotation", &rot, 0.0f, 1.0f);
 
