@@ -8,6 +8,7 @@ uniform mat4 uProj;
 uniform mat4 uView;
 uniform vec2 uScale;
 uniform vec4 uSplatPos;
+uniform mat4 uRot;
 
 out vec4 FragPos;
 out vec2 Scale;
@@ -20,17 +21,7 @@ mat4 mScale = mat4(
          0.0,      0.0, 0.0, 1.0
 );
 
-uniform float uRot;
-float ang = 3.14159265 * 90.0 / 180.0;
-
-mat4 mRot = mat4(
-    cos(uRot), -sin(uRot), 0.0, 0.0,
-    sin(uRot),  cos(uRot), 0.0, 0.0,
-         0.0,       0.0, 1.0, 0.0,
-         0.0,       0.0, 0.0, 1.0
-);
-
-mat4 mRotScal = mRot * mScale;
+mat4 mRotScal = uRot * mScale;
 
 void main()
 {
@@ -49,7 +40,7 @@ void main()
     mvMatrix[2][2] = mRotScal[2][2];
 
     gl_Position = uProj * mvMatrix * inPos;
-    FragPos = mRot * uModle * vec4(inPos.xyz, 1.0);
+    FragPos = mRotScal * uModle * vec4(inPos.xyz, 1.0);
     Scale = uScale;
-    SplatPos = uModle * vec4(uSplatPos.xyz, 1.0);
+    SplatPos = vec4(uSplatPos.xyz, 1.0);
 }

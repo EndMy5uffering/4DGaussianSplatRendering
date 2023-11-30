@@ -98,11 +98,11 @@ int main(void)
     GLCall(glGenVertexArrays(1, &vao));
     GLCall(glBindVertexArray(vao));
     
-    Texture texture0("../Textures/Kenney/PNG/Dark/texture_01.png", GL_RGB, GL_RGB);
+    /*Texture texture0("../Textures/Kenney/PNG/Dark/texture_01.png", GL_RGB, GL_RGB);
     texture0.Bind(1);
     Texture skyTexture("../Textures/Kenney/PNG/Orange/texture_08.png", GL_RGB, GL_RGB);
     skyTexture.Bind(2);
-
+    */
     Shader shader;
 
     shader.AddShaderSource("../Shader/TemplateFragmentShader.GLSL", GL_FRAGMENT_SHADER);
@@ -129,7 +129,7 @@ int main(void)
     SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader.BuildShader();
 
-    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, { 1.0f, 1.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
+    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
 
     size_t numOfSplats = 1000;
     std::vector<Splat2D*> splats;
@@ -140,7 +140,6 @@ int main(void)
     for(size_t i = 0; i < numOfSplats; ++i)
     {
         Splat2D* s = new Splat2D({ frand(from, to), frand(from, to) , 0.0f },
-            { frand(-1.0f, 1.0f), frand(-1.0f, 1.0f) },
             { frand(-1.0f, 1.0f), frand(-1.0f, 1.0f) },
             frand(-8.0f, 8.0f),
             frand(-8.0f, 8.0f),
@@ -156,11 +155,8 @@ int main(void)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     DebugMenu::Menu01Data menuData;
-    menuData.rot = 0.0f;
     menuData.v0 = 1.0f;
     menuData.v1 = 0.0f;
-    menuData.v2 = 1.0f;
-    menuData.v3 = 1.0f;
     menuData.l0 = 4.0f;
     menuData.l1 = 2.0f;
 
@@ -170,23 +166,23 @@ int main(void)
         /* Render here */
         renderer.Clear();
 
-        shader.Bind();
+        /*shader.Bind();
         shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
         
         shader.SetUniform1i("u_tex0", 1);
         shader.SetUniformMat4f("u_modle", background.GetTransform());
         background.Render(renderer);
-
+        */
         s2d.SetLambas(menuData.l0, menuData.l1);
-        s2d.SetVectors({ menuData.v0, menuData.v1 }, { menuData.v2, menuData.v3 });
+        s2d.SetVectors({ menuData.v0, menuData.v1 });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
-        s2d.Draw(renderer, cam, menuData.rot*PI*2);
+        s2d.Draw(renderer, cam);
 
 
-        for (size_t i = 0; i < splats.size(); ++i)
+        /*for (size_t i = 0; i < splats.size(); ++i)
         {
             splats[i]->Draw(renderer, cam, 0.0f);
-        }
+        }*/
 
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();

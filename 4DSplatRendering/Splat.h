@@ -119,7 +119,7 @@ private:
 class Splat2D
 {
 public:
-    Splat2D(glm::vec3 pos, glm::vec2 v0, glm::vec2 v1, float l0, float l1, Shader &renderShader, glm::vec3 color) :
+    Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader &renderShader, glm::vec3 color) :
         mPosition(pos),
         mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
         mVertFragShader(renderShader),
@@ -127,7 +127,7 @@ public:
         ml0{sqrtf(l0)},
         ml1{sqrtf(l1)},
         mv0{ glm::normalize(v0) },
-        mv1{ glm::normalize(v1) },
+        mv1{ glm::normalize(glm::vec2(v0.y, -v0.x)) },
         mColor{color}
     {
         CalcAndSetSigma();
@@ -142,31 +142,40 @@ public:
         mSigma = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
     }
 
-    void Draw(Renderer r, Camera c, float rotAngle) 
+    void Draw(Renderer r, Camera c) 
     { 
+
+        glm::mat4 rot(
+            mv0.x, mv0.y, 0, 0,
+            mv1.x, mv1.y, 0, 0,
+                0,     0, 1, 0,
+                0,     0, 0, 1
+        );
+
+
         mVertFragShader.Bind();
         mVertFragShader.SetUniform4f("uColor", mColor.r, mColor.g, mColor.b, 1.0);
         mVertFragShader.SetUniform2f("uScale", ml0, ml1);
         mVertFragShader.SetUniformMat2f("uSigma", mSigma);
         mVertFragShader.SetUniform4f("uSplatPos", mPosition.x, mPosition.y, mPosition.z, 1.0f);
-        mVertFragShader.SetUniform1f("uRot", rotAngle);
         mVertFragShader.SetUniformMat4f("uModle", mBillboard.GetTransform());
         mVertFragShader.SetUniformMat4f("uProj", c.GetProjMatrix());
         mVertFragShader.SetUniformMat4f("uView", c.GetViewMatrix());
+        mVertFragShader.SetUniformMat4f("uRot", rot);
         mBillboard.Render(r);
     }
 
     void SetLambas(float l0, float l1) 
     {
-        this->ml0 = l0;
-        this->ml1 = l1;
+        this->ml0 = sqrtf(l0);
+        this->ml1 = sqrtf(l1);
         CalcAndSetSigma();
     }
 
-    void SetVectors(glm::vec2 v0, glm::vec2 v1)
+    void SetVectors(glm::vec2 v0)
     {
         this->mv0 = glm::normalize(v0);
-        this->mv1 = glm::normalize(v1);
+        this->mv1 = glm::normalize(glm::vec2(v0.y, -v0.x));
         CalcAndSetSigma();
     }
 

@@ -8,11 +8,8 @@ namespace DebugMenu
 {
 
     struct Menu01Data {
-        float rot;
         float v0;
         float v1;
-        float v2;
-        float v3;
         float l0;
         float l1;
         float color[3] = {0.0f, 0.0f, 0.0f};
@@ -24,13 +21,10 @@ namespace DebugMenu
         ImGui::Begin("4D Splats :D");
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
 
-        ImGui::SliderFloat("Rotation", &(data->rot), 0.0f, 1.0f);
         ImGui::SliderFloat("V0", &(data->v0), -10.0f, 10.0f);
         ImGui::SliderFloat("V1", &(data->v1), -10.0f, 10.0f);
-        ImGui::SliderFloat("V2", &(data->v2), -10.0f, 10.0f);
-        ImGui::SliderFloat("V3", &(data->v3), -10.0f, 10.0f);
-        ImGui::SliderFloat("l0", &(data->l0), -10.0f, 10.0f);
-        ImGui::SliderFloat("l1", &(data->l1), -10.0f, 10.0f);
+        ImGui::SliderFloat("l0", &(data->l0), 0.0f, 10.0f);
+        ImGui::SliderFloat("l1", &(data->l1), 0.0f, 10.0f);
 
         ImGui::ColorPicker3("Splat Color", (data->color));
         ImGui::End();
