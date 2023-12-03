@@ -30,15 +30,14 @@
 #include "imgui_impl_opengl3.h"
 #include "DebugMenu.h"
 
-float frand(float from, float to)
-{
-    return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
-}
-
 int SCREEN_WIDTH = 980;
 int SCREEN_HEIGHT = 680;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
 
+float frand(float from, float to)
+{
+    return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
+}
 
 void updateScreenSize(GLFWwindow* window, int width, int height) 
 {
@@ -98,11 +97,11 @@ int main(void)
     GLCall(glGenVertexArrays(1, &vao));
     GLCall(glBindVertexArray(vao));
     
-    /*Texture texture0("../Textures/Kenney/PNG/Dark/texture_01.png", GL_RGB, GL_RGB);
+    Texture texture0("../Textures/Kenney/PNG/Dark/texture_01.png", GL_RGB, GL_RGB);
     texture0.Bind(1);
     Texture skyTexture("../Textures/Kenney/PNG/Orange/texture_08.png", GL_RGB, GL_RGB);
     skyTexture.Bind(2);
-    */
+    
     Shader shader;
 
     shader.AddShaderSource("../Shader/TemplateFragmentShader.GLSL", GL_FRAGMENT_SHADER);
@@ -160,19 +159,24 @@ int main(void)
     menuData.l0 = 4.0f;
     menuData.l1 = 2.0f;
 
+    DebugMenu::Menu02Data menu2Data;
+    menu2Data.buffer = "This could be your shader :D";
+    menu2Data.shaders.push_back(&SplatRenderShader);
+
+
     while (!glfwWindowShouldClose(window))
     {
         glEnable(GL_BLEND);
         /* Render here */
         renderer.Clear();
 
-        /*shader.Bind();
+        shader.Bind();
         shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
         
         shader.SetUniform1i("u_tex0", 1);
         shader.SetUniformMat4f("u_modle", background.GetTransform());
         background.Render(renderer);
-        */
+        
         s2d.SetLambas(menuData.l0, menuData.l1);
         s2d.SetVectors({ menuData.v0, menuData.v1 });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
@@ -189,8 +193,9 @@ int main(void)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
+        DebugMenu::MainMenuStrip();
         DebugMenu::Menu_01(io, &menuData);
-
+        DebugMenu::ShaderEditor(&menu2Data);
         //IMGUI
 
         ImGui::Render();
@@ -201,7 +206,7 @@ int main(void)
 
         /* Poll for and process events */
         GLCall(glfwPollEvents());
-        cam.HandleInput(window);
+        cam.HandleInput(window, ImGui::IsAnyItemActive());
         glDisable(GL_BLEND);
 
     }
@@ -210,6 +215,7 @@ int main(void)
     {
         delete splats[i];
     }
+
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

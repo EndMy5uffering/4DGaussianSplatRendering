@@ -116,6 +116,42 @@ void Shader::BuildShader()
     m_RendererID = program;
 }
 
+void Shader::RebuildShader()
+{
+    GLCall(glDeleteProgram(m_RendererID));
+    m_RendererID = 0;
+    this->BuildShader();
+}
+
+bool Shader::TryCompile(std::string source, ShaderType type)
+{
+    unsigned int id = glCreateShader(type);
+    const char* src = source.c_str();
+    glShaderSource(id, 1, &src, nullptr);
+    glCompileShader(id);
+
+    int result;
+    glGetShaderiv(id, GL_COMPILE_STATUS, &result);
+    if (result == GL_FALSE)
+    {
+        int len;
+        glGetShaderiv(id, GL_INFO_LOG_LENGTH, &len);
+        char* message = (char*)malloc(len * sizeof(char));
+        glGetShaderInfoLog(id, len, &len, message);
+
+        std::cout << "Runtime compilaton failed:\n";
+        std::cout << message << std::endl;
+
+        free(message);
+
+        glDeleteShader(id);
+        return false;
+    }
+
+    glDeleteShader(id);
+    return true;
+}
+
 inline unsigned int Shader::GetUniformLocation(const std::string& name)
 {
     if (uniformCash.find(name) != uniformCash.end())
@@ -191,5 +227,45 @@ void Shader::DispatchCompute(Texture &tex, unsigned int depth)
 void Shader::DispatchCompute(Texture &tex)
 {
     DispatchCompute(tex.GetWidth(), tex.GetHeight(), 1);
+}
+
+std::string Shader::GetLoadedShaderSource(const char* path)
+{
+    ShaderSource found = { 0 };
+
+    for (ShaderSource s : m_ShaderSources)
+    {
+        if (s.path == path) 
+        {
+            found = s;
+        }
+    }
+
+    return found.source;
+}
+
+unsigned int Shader::GetRenderID()
+{
+    return this->m_RendererID;
+}
+
+size_t Shader::GetShaderID()
+{
+    return this->mShaderID;
+}
+
+std::vector<ShaderSource> Shader::GetShaderSources()
+{
+    return this->m_ShaderSources;
+}
+
+ShaderSource* Shader::GetShourceByIdx(int idx)
+{
+    return &this->m_ShaderSources[idx];
+}
+
+size_t Shader::GetShaderSourceSize()
+{
+    return m_ShaderSources.size();
 }
 

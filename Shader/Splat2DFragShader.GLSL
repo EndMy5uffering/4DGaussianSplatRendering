@@ -22,9 +22,9 @@ float p2(vec4 fpos, vec4 splatcenter)
 
 void main()
 {
-	//float c = p(vec2(FragPos.x * Scale.x, FragPos.y * Scale.y), SplatPos.xy);
-	float c = p2(FragPos, SplatPos);
+	float c = p(vec2(FragPos.x * Scale.x*Scale.x*Scale.x, FragPos.y * Scale.y*Scale.y*Scale.y), SplatPos.xy);
+	//float c = p2(FragPos, SplatPos);
 
     color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c);
-	if(c < 0.01) color = vec4(uColor.x, uColor.y, uColor.z, 1.0);
+	if(c < 0.0001) color = vec4(uColor.x, uColor.y, uColor.z, 1.0);
 }

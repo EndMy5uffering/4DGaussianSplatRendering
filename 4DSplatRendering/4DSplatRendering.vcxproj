@@ -144,6 +144,7 @@
     <ClCompile Include="..\Dependencies\IMGUI\imgui_draw.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_impl_glfw.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_impl_opengl3.cpp" />
+    <ClCompile Include="..\Dependencies\IMGUI\imgui_stdlib.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_tables.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_widgets.cpp" />
     <ClCompile Include="Application.cpp" />
@@ -164,6 +165,7 @@
     <ClInclude Include="..\Dependencies\IMGUI\imgui_impl_opengl3.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imgui_impl_opengl3_loader.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imgui_internal.h" />
+    <ClInclude Include="..\Dependencies\IMGUI\imgui_stdlib.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_rectpack.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_truetype.h" />

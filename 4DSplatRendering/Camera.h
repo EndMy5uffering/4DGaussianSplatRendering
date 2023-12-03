@@ -30,7 +30,7 @@ public:
 	glm::mat4 GetViewMatrix();
 	glm::mat4 GetProjMatrix();
 
-	void HandleInput(GLFWwindow *window);
+	void HandleInput(GLFWwindow *window, bool imguiActive = false);
 	void SetWidth(int width) { this->width = width; }
 	void SetHeight(int height) { this->height = height; }
 	void SetNear(float near) { this->mNear = near; }

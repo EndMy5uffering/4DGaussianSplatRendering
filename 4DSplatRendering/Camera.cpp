@@ -57,8 +57,11 @@ glm::mat4 Camera::GetProjMatrix()
 	return glm::perspective(glm::radians(mFOV), ((float)width / (float)height), mNear, mFar);
 }
 
-void Camera::HandleInput(GLFWwindow* window)
+void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 {
+
+	if (imguiActive) return;
+
 	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
 	{
 		position += orientation * speed;

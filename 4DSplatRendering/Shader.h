@@ -24,6 +24,9 @@ public:
 
 	void AddShaderSource(const std::string &path, ShaderType type);
 	void BuildShader();
+	void RebuildShader();
+
+	static bool TryCompile(std::string source, ShaderType type);
 
 	//Set uniforms
 
@@ -60,13 +63,21 @@ public:
 	void DispatchCompute(Texture &tex, unsigned int depth);
 	void DispatchCompute(Texture &tex);
 
-private:
-	std::vector< ShaderSource > m_ShaderSources;
-	unsigned int m_RendererID{0};
-	std::unordered_map<std::string, int> uniformCash;
-	//chashing for uniforms
+	std::string GetLoadedShaderSource(const char* path);
+	unsigned int GetRenderID();
+	size_t GetShaderID();
+	std::vector<ShaderSource> GetShaderSources();
+	ShaderSource* GetShourceByIdx(int idx);
+	size_t GetShaderSourceSize();
 
 	int CompileShader(const ShaderSource& shader);
 	std::string LoadShaderSource(const std::string& filePath);
+
+private:
+	size_t mShaderID = 0;
+	std::vector< ShaderSource > m_ShaderSources;
+	unsigned int m_RendererID{0};
+	std::unordered_map<std::string, int> uniformCash; //chashing for uniforms
+
 };
 
