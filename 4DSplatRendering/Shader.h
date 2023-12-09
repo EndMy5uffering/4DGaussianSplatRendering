@@ -38,11 +38,20 @@ public:
 	/* Sets a vec2 with 2 float values */
 	void SetUniform2f(const std::string& name, float v0, float v1);
 
+	/* Sets a vec2 with 2 float values */
+	void SetUniform2f(const std::string& name, glm::vec2 v);
+
 	/* Sets a vec3 with 3 float values */
 	void SetUniform3f(const std::string& name, float v0, float v1, float v2);
+
+	/* Sets a vec3 with 3 float values */
+	void SetUniform3f(const std::string& name, glm::vec3 v);
 	
 	/* Sets a vec4 with 4 float values */
 	void SetUniform4f(const std::string& name, float v0, float v1, float v2, float v3);
+
+	/* Sets a vec4 with 4 float values */
+	void SetUniform4f(const std::string& name, glm::vec4 v);
 
 	/* Sets a 4x4 Matrix */
 	void SetUniformMat4f(const std::string& name, glm::mat4 mat);

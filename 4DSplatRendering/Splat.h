@@ -139,29 +139,26 @@ public:
     {
         glm::mat2 S(ml0, 0.0f, 0.0f, ml1);
         glm::mat2 R(mv0, mv1);
-        mSigma = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
+        glm::mat2 sig = R * S * glm::transpose(S) * glm::transpose(R);
+        /*sig[2][2] = 1.0;
+        sig[3][3] = 1.0;*/
+        mSigma = glm::inverse(sig);
+
+        this->mN = 1.0f / (2.0f * PI * sqrt(glm::determinant(sig)));
     }
 
     void Draw(Renderer r, Camera c) 
     { 
-
-        glm::mat4 rot(
-            mv0.x, mv0.y, 0, 0,
-            mv1.x, mv1.y, 0, 0,
-                0,     0, 1, 0,
-                0,     0, 0, 1
-        );
-
-
         mVertFragShader.Bind();
         mVertFragShader.SetUniform4f("uColor", mColor.r, mColor.g, mColor.b, 1.0);
         mVertFragShader.SetUniform2f("uScale", ml0, ml1);
+        mVertFragShader.SetUniform2f("uVec1", mv0);
+        mVertFragShader.SetUniform2f("uVec2", mv1);
         mVertFragShader.SetUniformMat2f("uSigma", mSigma);
+        mVertFragShader.SetUniform1f("uN", mN);
         mVertFragShader.SetUniform4f("uSplatPos", mPosition.x, mPosition.y, mPosition.z, 1.0f);
-        mVertFragShader.SetUniformMat4f("uModle", mBillboard.GetTransform());
         mVertFragShader.SetUniformMat4f("uProj", c.GetProjMatrix());
         mVertFragShader.SetUniformMat4f("uView", c.GetViewMatrix());
-        mVertFragShader.SetUniformMat4f("uRot", rot);
         mBillboard.Render(r);
     }
 
@@ -179,6 +176,11 @@ public:
         CalcAndSetSigma();
     }
 
+    void SetPosition(glm::vec3 pos) 
+    {
+        this->mPosition = pos;
+    }
+
     void SetColor(glm::vec3 color) 
     {
         this->mColor = color;
@@ -193,6 +195,7 @@ private:
     glm::mat2 mSigma;
     Shader mVertFragShader;
     Geometry::Billboard mBillboard;
+    float mN;
 };
 
 class Splat2DCompute

@@ -39,6 +39,12 @@ float frand(float from, float to)
     return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
 }
 
+glm::vec2 getVecFromAngle(float ang) 
+{
+    float _ang = ang * PI / 180.0f;
+    return glm::vec2{ cos(_ang), sin(_ang) };
+}
+
 void updateScreenSize(GLFWwindow* window, int width, int height) 
 {
     SCREEN_WIDTH = width;
@@ -58,6 +64,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
+    glfwWindowHint(GLFW_MAXIMIZED, 1);
 
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "4D Gaussian Splats", NULL, NULL);
@@ -130,18 +137,18 @@ int main(void)
 
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
 
-    size_t numOfSplats = 1000;
+    size_t numOfSplats = 10;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
-    float from = -20;
-    float to = 20;
+    float from = 0;
+    float to = 0;
     for(size_t i = 0; i < numOfSplats; ++i)
     {
-        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to) , 0.0f },
-            { frand(-1.0f, 1.0f), frand(-1.0f, 1.0f) },
-            frand(-8.0f, 8.0f),
-            frand(-8.0f, 8.0f),
+        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to), 0.0f },
+            getVecFromAngle(frand(0, 360.0f)),
+            frand(0, 1.0f),
+            frand(0, 1.0f),
             SplatRenderShader,
             { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f) });
         splats.push_back(s);
@@ -154,8 +161,7 @@ int main(void)
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     DebugMenu::Menu01Data menuData;
-    menuData.v0 = 1.0f;
-    menuData.v1 = 0.0f;
+    menuData.angle = 0.0f;
     menuData.l0 = 4.0f;
     menuData.l1 = 2.0f;
 
@@ -178,14 +184,16 @@ int main(void)
         background.Render(renderer);
         
         s2d.SetLambas(menuData.l0, menuData.l1);
-        s2d.SetVectors({ menuData.v0, menuData.v1 });
+        float ang = menuData.angle * PI / 180.0f;
+        s2d.SetVectors({ cos(ang), sin(ang) });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
+        s2d.SetPosition(menuData.splatPos);
         s2d.Draw(renderer, cam);
 
 
         /*for (size_t i = 0; i < splats.size(); ++i)
         {
-            splats[i]->Draw(renderer, cam, 0.0f);
+            splats[i]->Draw(renderer, cam);
         }*/
 
         //IMGUI

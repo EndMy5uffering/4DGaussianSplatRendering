@@ -10,10 +10,10 @@ namespace DebugMenu
 {
 
     struct Menu01Data {
-        float v0 = 0.0f;
-        float v1 = 0.0f;
+        float angle = 0.0f;
         float l0 = 0.0f;
         float l1 = 0.0f;
+        glm::vec3 splatPos{0.0,0.0,0.0};
         float color[3] = {0.0f, 0.0f, 0.0f};
     };
 
@@ -30,10 +30,16 @@ namespace DebugMenu
         ImGui::Begin("4D Splats :D");
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
 
-        ImGui::SliderFloat("V0", &(data->v0), -10.0f, 10.0f);
-        ImGui::SliderFloat("V1", &(data->v1), -10.0f, 10.0f);
+        ImGui::SliderFloat("Angle", &(data->angle), -180.0f, 180.0f);
         ImGui::SliderFloat("l0", &(data->l0), 0.0f, 10.0f);
         ImGui::SliderFloat("l1", &(data->l1), 0.0f, 10.0f);
+
+        float x = data->splatPos.x, y = data->splatPos.y, z = data->splatPos.z;
+        ImGui::SliderFloat("Pos_X", &x, -10.0f, 10.0f);
+        ImGui::SliderFloat("Pos_Y", &y, -10.0f, 10.0f);
+        ImGui::SliderFloat("Pos_Z", &z, -10.0f, 10.0f);
+
+        data->splatPos = glm::vec3{x,y,z};
 
         ImGui::ColorPicker3("Splat Color", (data->color));
         ImGui::End();

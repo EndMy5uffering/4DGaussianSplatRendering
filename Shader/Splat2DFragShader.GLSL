@@ -9,21 +9,24 @@ in vec4 SplatPos;
 
 uniform mat2 uSigma; //sigma matrix
 uniform vec4 uColor; //sigma matrix
+uniform float uN;
 
 float p(vec2 x, vec2 mu)
 {
-	return exp(-0.5 * dot(((x-mu)*uSigma), (x-mu)));
+	vec2 pos = (x-mu);
+	vec2 spos = pos * uSigma;
+	return exp(-0.5 * dot(spos, pos));
 }
 
-float p2(vec4 fpos, vec4 splatcenter)
+float p2(vec4 splatcenter)
 {
-	return 1/exp(-0.5*length(splatcenter.xyz - fpos.xyz));
+	return exp(-0.5*length(splatcenter.xyz - FragPos.xyz));
 }
 
 void main()
 {
-	float c = p(vec2(FragPos.x * Scale.x*Scale.x*Scale.x, FragPos.y * Scale.y*Scale.y*Scale.y), SplatPos.xy);
-	//float c = p2(FragPos, SplatPos);
+	float c = p(FragPos.xy, SplatPos.xy);
+	//float c = p2(SplatPos);
 
     color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c);
 	if(c < 0.0001) color = vec4(uColor.x, uColor.y, uColor.z, 1.0);

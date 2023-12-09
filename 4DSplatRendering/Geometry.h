@@ -73,10 +73,10 @@ namespace Geometry
     {
         const float BillboardVertexBuff[] = {
             //     pos          |    uv    |
-            -0.5f,  0.5f, 0.0f, 0.0f, 1.0f, // 0 0
-            -0.5f, -0.5f, 0.0f, 1.0f, 1.0f, // 1 1
-             0.5f,  0.5f, 0.0f, 1.0f, 0.0f, // 2 2
-             0.5f, -0.5f, 0.0f, 0.0f, 0.0f, // 3 3
+            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f, // 0 0
+            -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // 1 1
+             1.0f,  1.0f, 0.0f, 1.0f, 0.0f, // 2 2
+             1.0f, -1.0f, 0.0f, 0.0f, 0.0f, // 3 3
         };
 
         const unsigned int BoxIdxBuff[] = {
