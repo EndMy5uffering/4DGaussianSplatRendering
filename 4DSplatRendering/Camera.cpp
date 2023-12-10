@@ -57,6 +57,11 @@ glm::mat4 Camera::GetProjMatrix()
 	return glm::perspective(glm::radians(mFOV), ((float)width / (float)height), mNear, mFar);
 }
 
+glm::vec3 Camera::GetPosition()
+{
+	return position;
+}
+
 void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 {
 

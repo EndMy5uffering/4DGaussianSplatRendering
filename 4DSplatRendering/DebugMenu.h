@@ -15,6 +15,7 @@ namespace DebugMenu
         float l1 = 0.0f;
         glm::vec3 splatPos{0.0,0.0,0.0};
         float color[3] = {0.0f, 0.0f, 0.0f};
+        std::string textInfo = "-";
     };
 
     struct Menu02Data {
@@ -42,6 +43,9 @@ namespace DebugMenu
         data->splatPos = glm::vec3{x,y,z};
 
         ImGui::ColorPicker3("Splat Color", (data->color));
+
+        ImGui::Text(data->textInfo.c_str());
+
         ImGui::End();
 	}
 

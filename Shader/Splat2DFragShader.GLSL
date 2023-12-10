@@ -27,7 +27,7 @@ void main()
 {
 	float c = p(FragPos.xy, SplatPos.xy);
 	//float c = p2(SplatPos);
-
+	//c = 1.0f;
     color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c);
-	if(c < 0.0001) color = vec4(uColor.x, uColor.y, uColor.z, 1.0);
+	if(c < 0.01) discard;
 }

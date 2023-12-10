@@ -181,6 +181,11 @@ public:
         this->mPosition = pos;
     }
 
+    glm::vec3 GetPosition() 
+    {
+        return mPosition;
+    }
+
     void SetColor(glm::vec3 color) 
     {
         this->mColor = color;

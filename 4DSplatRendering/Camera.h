@@ -29,6 +29,7 @@ public:
 	glm::mat4 GetViewProjMatrix();
 	glm::mat4 GetViewMatrix();
 	glm::mat4 GetProjMatrix();
+	glm::vec3 GetPosition();
 
 	void HandleInput(GLFWwindow *window, bool imguiActive = false);
 	void SetWidth(int width) { this->width = width; }

@@ -23,17 +23,17 @@ mat4 mScale = mat4(
 );
 
 mat4 mRot = mat4(
-    uVec1.x, uVec1.y, 0.0, 0.0,
-    uVec2.x, uVec2.y, 0.0, 0.0,
+    uVec1.x, uVec2.x, 0.0, 0.0,
+    uVec1.y, uVec2.y, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0
 );
 
 mat4 splatPosMat = mat4(
-    1.0, 0.0, 0.0, uSplatPos.x,
-    0.0, 1.0, 0.0, uSplatPos.y,
-    0.0, 0.0, 1.0, uSplatPos.z,
-    0.0, 0.0, 0.0, uSplatPos.w
+    1.0, 0.0, 0.0, 0.0,
+    0.0, 1.0, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    uSplatPos.x, uSplatPos.y, uSplatPos.z, uSplatPos.w
 );
 
 mat4 mPosRotScal = splatPosMat * mRot * mScale;

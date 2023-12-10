@@ -8,6 +8,7 @@
 #include <string>
 #include <sstream>
 #include <stb_image.h>
+#include <algorithm>
 
 #include "Camera.h"
 #include "Renderer.h"
@@ -44,6 +45,29 @@ glm::vec2 getVecFromAngle(float ang)
     float _ang = ang * PI / 180.0f;
     return glm::vec2{ cos(_ang), sin(_ang) };
 }
+
+std::string getTextInfo(Camera cam) 
+{
+    std::stringstream ss;
+    glm::mat4 vmat = cam.GetViewMatrix();
+    glm::mat4 projmat = cam.GetProjMatrix();
+    ss << "ViewMatrix:\n";
+    ss << "[ " << vmat[0][0] << ", " << vmat[0][1] << ", " << vmat[0][2] << ", " << vmat[0][3] << " ]\n";
+    ss << "[ " << vmat[1][0] << ", " << vmat[1][1] << ", " << vmat[1][2] << ", " << vmat[1][3] << " ]\n";
+    ss << "[ " << vmat[2][0] << ", " << vmat[2][1] << ", " << vmat[2][2] << ", " << vmat[2][3] << " ]\n";
+    ss << "[ " << vmat[3][0] << ", " << vmat[3][1] << ", " << vmat[3][2] << ", " << vmat[3][3] << " ]\n";
+    ss << "\n";
+    ss << "ProjMatix:\n";
+    ss << "[ " << projmat[0][0] << ", " << projmat[0][1] << ", " << projmat[0][2] << ", " << projmat[0][3] << " ]\n";
+    ss << "[ " << projmat[1][0] << ", " << projmat[1][1] << ", " << projmat[1][2] << ", " << projmat[1][3] << " ]\n";
+    ss << "[ " << projmat[2][0] << ", " << projmat[2][1] << ", " << projmat[2][2] << ", " << projmat[2][3] << " ]\n";
+    ss << "[ " << projmat[3][0] << ", " << projmat[3][1] << ", " << projmat[3][2] << ", " << projmat[3][3] << " ]\n";
+    ss << "\n";
+
+    return ss.str();
+
+}
+
 
 void updateScreenSize(GLFWwindow* window, int width, int height) 
 {
@@ -137,18 +161,18 @@ int main(void)
 
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
 
-    size_t numOfSplats = 10;
+    size_t numOfSplats = 1500;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
-    float from = 0;
-    float to = 0;
+    float from = -50;
+    float to = 50;
     for(size_t i = 0; i < numOfSplats; ++i)
     {
-        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to), 0.0f },
+        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to), frand(from, to) },
             getVecFromAngle(frand(0, 360.0f)),
-            frand(0, 1.0f),
-            frand(0, 1.0f),
+            frand(0.5f, 5.0f),
+            frand(0.5f, 5.0f),
             SplatRenderShader,
             { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f) });
         splats.push_back(s);
@@ -172,7 +196,6 @@ int main(void)
 
     while (!glfwWindowShouldClose(window))
     {
-        glEnable(GL_BLEND);
         /* Render here */
         renderer.Clear();
 
@@ -188,13 +211,23 @@ int main(void)
         s2d.SetVectors({ cos(ang), sin(ang) });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
         s2d.SetPosition(menuData.splatPos);
-        s2d.Draw(renderer, cam);
+        //s2d.Draw(renderer, cam);
+        menuData.textInfo = getTextInfo(cam);
 
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
-        /*for (size_t i = 0; i < splats.size(); ++i)
+        std::sort(splats.begin(), splats.end(), [](Splat2D *a, Splat2D *b) {
+            float aDist = glm::length((a->GetPosition() - cam.GetPosition()));
+            float bDist = glm::length((b->GetPosition() - cam.GetPosition()));
+            return aDist > bDist;
+        });
+
+        for (size_t i = 0; i < splats.size(); ++i)
         {
             splats[i]->Draw(renderer, cam);
-        }*/
+        }
+        glDisable(GL_BLEND);
 
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();
@@ -215,7 +248,6 @@ int main(void)
         /* Poll for and process events */
         GLCall(glfwPollEvents());
         cam.HandleInput(window, ImGui::IsAnyItemActive());
-        glDisable(GL_BLEND);
 
     }
 
