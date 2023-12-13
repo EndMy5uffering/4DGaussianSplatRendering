@@ -17,6 +17,7 @@ class Shader
 {
 public:
 	Shader();
+	Shader(Shader&) = delete;
 	~Shader();
 
 	void Bind() const;

@@ -75,6 +75,9 @@
     <ClCompile Include="..\Dependencies\IMGUI\imgui_stdlib.cpp">
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
+    <ClCompile Include="Gizmo.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -139,6 +142,9 @@
     </ClInclude>
     <ClInclude Include="..\Dependencies\IMGUI\imgui_stdlib.h">
       <Filter>Header Files\imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="Gizmo.h">
+      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

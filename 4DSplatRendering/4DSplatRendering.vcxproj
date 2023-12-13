@@ -149,6 +149,7 @@
     <ClCompile Include="..\Dependencies\IMGUI\imgui_widgets.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Camera.cpp" />
+    <ClCompile Include="Gizmo.cpp" />
     <ClCompile Include="IndexBuffer.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Shader.cpp" />
@@ -172,6 +173,7 @@
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DebugMenu.h" />
     <ClInclude Include="Geometry.h" />
+    <ClInclude Include="Gizmo.h" />
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Shader.h" />

@@ -31,6 +31,8 @@
 #include "imgui_impl_opengl3.h"
 #include "DebugMenu.h"
 
+#include "Gizmo.h"
+
 int SCREEN_WIDTH = 980;
 int SCREEN_HEIGHT = 680;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
@@ -115,12 +117,8 @@ int main(void)
     ImGui::CreateContext();
 
     ImGui::StyleColorsDark();
-    //ImGui_ImplOpenGL3_Init(glsl_version);
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
-    //io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // IF using Docking Branch
-    ImGui_ImplGlfw_InitForOpenGL(window, true);          // Second param install_callback=true will install GLFW callbacks and chain to existing ones.
+    ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init();
     //IMGUI
     
@@ -143,8 +141,7 @@ int main(void)
     glEnable(GL_DEPTH_TEST);
     //glEnable(GL_CULL_FACE);
     //glCullFace(GL_FRONT);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-
+    
     /* Loop until the user closes the window */
     glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
     cam.SetFar(5000.0f);
@@ -161,7 +158,7 @@ int main(void)
 
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
 
-    size_t numOfSplats = 1500;
+    size_t numOfSplats = 500;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
@@ -171,8 +168,8 @@ int main(void)
     {
         Splat2D* s = new Splat2D({ frand(from, to), frand(from, to), frand(from, to) },
             getVecFromAngle(frand(0, 360.0f)),
-            frand(0.5f, 5.0f),
-            frand(0.5f, 5.0f),
+            frand(0.5f, 10.0f),
+            frand(0.5f, 10.0f),
             SplatRenderShader,
             { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f) });
         splats.push_back(s);
@@ -206,16 +203,16 @@ int main(void)
         shader.SetUniformMat4f("u_modle", background.GetTransform());
         background.Render(renderer);
         
+
+        glEnable(GL_BLEND);
+        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         s2d.SetLambas(menuData.l0, menuData.l1);
         float ang = menuData.angle * PI / 180.0f;
         s2d.SetVectors({ cos(ang), sin(ang) });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
         s2d.SetPosition(menuData.splatPos);
         //s2d.Draw(renderer, cam);
-        menuData.textInfo = getTextInfo(cam);
 
-        glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 
         std::sort(splats.begin(), splats.end(), [](Splat2D *a, Splat2D *b) {
             float aDist = glm::length((a->GetPosition() - cam.GetPosition()));
@@ -235,8 +232,11 @@ int main(void)
         ImGui::NewFrame();
 
         DebugMenu::MainMenuStrip();
-        DebugMenu::Menu_01(io, &menuData);
+        DebugMenu::Splat2DMenu(&menuData);
         DebugMenu::ShaderEditor(&menu2Data);
+        std::string val = getTextInfo(cam);
+        DebugMenu::CamInfo(io, val);
+        DebugMenu::Splat3DMenu();
         //IMGUI
 
         ImGui::Render();

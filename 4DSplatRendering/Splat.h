@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/matrix_operation.hpp>
 #include "Shader.h"
 #include "Renderer.h"
 #include "Camera.h"
@@ -103,16 +104,110 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec3 pos, glm::vec3 v0, glm::vec3 v1, glm::vec3 v2, float l0, float l1, float l2) : mPosition(pos)
+    Splat3D(glm::vec4 pos, glm::vec3 v0, glm::vec3 v1, float l0, float l1, float l2, Shader shader, Camera& cam) : 
+        mPosition(pos),
+        mw0{v0},
+        mw1{v1},
+        mw2{glm::vec4(0.0f)},
+        ml0{l0},
+        ml1{l1},
+        ml2{l2},
+        mShader{shader},
+        mCam{cam}
     {
-
+        CalcAndSetSigma();
     }
 
 	~Splat3D() {}
 
+    void CalcAndSetSigma()
+    {
+        this->mw0 = glm::normalize(this->mw0);
+        glm::vec3 tmpW2 = glm::normalize(glm::cross(this->mw0, this->mw1));
+        glm::vec3 tmpW1 = glm::normalize(glm::cross(this->mw0, tmpW2));
+        this->mw2 = tmpW2;
+        this->mw1 = tmpW1;
+
+        glm::mat4 modle = glm::mat4
+        {
+            mw0.x * ml0, mw0.y, mw0.z, 0.0f,
+            mw1.x, mw1.y * ml1, mw1.z, 0.0f,
+            mw2.x, mw2.y, mw2.z * ml2, 0.0f,
+            mPosition.x, mPosition.y, mPosition.z, mPosition.w
+        };
+
+        this->mModle = modle;
+    }
+
+    void Draw(Renderer r, Camera c)
+    {
+        mShader.Bind();
+
+        glm::mat4 modleView = this->mModle * this->mCam.GetViewMatrix();
+        glm::vec3 U{modleView[3][0], modleView[3][1], modleView[3][2]};
+        float l = glm::l2Norm(U);
+        glm::mat3 J{
+            1.0f / U.z, 0.0, U.x / l,
+            0.0f, 1.0f / U.z, U.y / l,
+            -U.x / (U.z * U.z), -U.y / (U.z * U.z), U.z / l
+        };
+        glm::mat3 W{
+            modleView[0][0], modleView[0][1], modleView[0][2],
+            modleView[1][0], modleView[1][1], modleView[1][2],
+            modleView[2][0], modleView[2][1], modleView[2][2],
+        };
+
+        glm::mat3 T3D = J * W;
+        glm::mat2 Vhat{
+            (T3D[0][0] * T3D[0][0]) + (T3D[0][1] * T3D[0][1]), (T3D[0][0] * T3D[0][1]) + (T3D[0][1] * T3D[1][1]),
+            (T3D[0][0] * T3D[1][0]) + (T3D[0][1] * T3D[1][1]), (T3D[1][0] * T3D[1][0]) + (T3D[1][1] * T3D[1][1])
+        };
+
+
+        mBillboard.Render(r);
+    }
+
+    void SetLambas(float l0, float l1, float l2)
+    {
+        this->ml0 = l0;
+        this->ml1 = l1;
+        this->ml2 = l2;
+        CalcAndSetSigma();
+    }
+
+    void SetVectors(glm::vec3 v0, glm::vec3 v1)
+    {
+        this->mw0 = v0;
+        this->mw1 = v1;
+        CalcAndSetSigma();
+    }
+
+    void SetPosition(glm::vec4 pos)
+    {
+        this->mPosition = pos;
+    }
+
+    glm::vec3 GetPosition()
+    {
+        return mPosition;
+    }
+
+    void SetColor(glm::vec3 color)
+    {
+        this->mColor = color;
+    }
+
 private:
-	glm::vec3 mPosition;
-    glm::mat3 mSigma;
+    float ml0, ml1, ml2;
+    glm::vec3 mColor;
+    glm::vec3 mw0;
+    glm::vec3 mw1;
+    glm::vec3 mw2;
+    glm::vec4 mPosition;
+    glm::mat4 mModle;
+    Shader &mShader;
+    Camera& mCam;
+    Geometry::Billboard mBillboard;
 };
 
 
@@ -140,11 +235,7 @@ public:
         glm::mat2 S(ml0, 0.0f, 0.0f, ml1);
         glm::mat2 R(mv0, mv1);
         glm::mat2 sig = R * S * glm::transpose(S) * glm::transpose(R);
-        /*sig[2][2] = 1.0;
-        sig[3][3] = 1.0;*/
         mSigma = glm::inverse(sig);
-
-        this->mN = 1.0f / (2.0f * PI * sqrt(glm::determinant(sig)));
     }
 
     void Draw(Renderer r, Camera c) 
@@ -155,7 +246,6 @@ public:
         mVertFragShader.SetUniform2f("uVec1", mv0);
         mVertFragShader.SetUniform2f("uVec2", mv1);
         mVertFragShader.SetUniformMat2f("uSigma", mSigma);
-        mVertFragShader.SetUniform1f("uN", mN);
         mVertFragShader.SetUniform4f("uSplatPos", mPosition.x, mPosition.y, mPosition.z, 1.0f);
         mVertFragShader.SetUniformMat4f("uProj", c.GetProjMatrix());
         mVertFragShader.SetUniformMat4f("uView", c.GetViewMatrix());
@@ -198,60 +288,6 @@ private:
     glm::vec2 mv1;
     glm::vec3 mPosition;
     glm::mat2 mSigma;
-    Shader mVertFragShader;
+    Shader &mVertFragShader;
     Geometry::Billboard mBillboard;
-    float mN;
-};
-
-class Splat2DCompute
-{
-public:
-    Splat2DCompute(const Splat2D&) = delete;
-    Splat2DCompute(glm::vec3 pos, glm::vec2 v0, glm::vec2 v1, float l0, float l1, Shader& computeShader, Shader& renderShader) :
-        mPosition(pos),
-        mComputeTexture(Texture((int)(sqrtf(l0) * 10.0f), (int)(sqrtf(l1) * 10.0f), GL_RGBA32F, GL_RGBA, GL_FLOAT)),
-        mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
-        mComputeShader(computeShader),
-        mVertFragShader(renderShader),
-        mSigma(glm::mat2(0.0f)),
-        ml0{ sqrtf(l0) },
-        ml1{ sqrtf(l1) }
-    {
-        glm::mat2 S(ml0, 0.0f, 0.0f, ml1);
-        glm::mat2 R(glm::normalize(v0), glm::normalize(v1));
-        mSigma = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
-
-        
-        mComputeTexture.BindAsComputeTexture(0);
-        mComputeShader.Bind();
-        mComputeShader.SetUniformMat2f("uSigma", mSigma);
-        mComputeShader.DispatchCompute(mComputeTexture);
-        
-    }
-
-    ~Splat2DCompute() {}
-
-    void Draw(Renderer r, Camera c, float rotAngle)
-    {
-
-        mComputeTexture.Bind(0);
-        mVertFragShader.Bind();
-        mVertFragShader.SetUniform1i("u_tex0", 0);
-        mVertFragShader.SetUniform2f("uScale", ml0, ml1);
-        mVertFragShader.SetUniformMat2f("uSigma", mSigma);
-        mVertFragShader.SetUniform1f("uRot", rotAngle);
-        mVertFragShader.SetUniformMat4f("uModle", mBillboard.GetTransform());
-        mVertFragShader.SetUniformMat4f("uProj", c.GetProjMatrix());
-        mVertFragShader.SetUniformMat4f("uView", c.GetViewMatrix());
-        mBillboard.Render(r);
-    }
-
-private:
-    float ml0, ml1;
-    glm::vec3 mPosition;
-    glm::mat2 mSigma;
-    Shader mComputeShader;
-    Shader mVertFragShader;
-    Geometry::Billboard mBillboard;
-    Texture mComputeTexture;
 };

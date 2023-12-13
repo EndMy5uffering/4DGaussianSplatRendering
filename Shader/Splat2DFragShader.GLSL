@@ -9,7 +9,6 @@ in vec4 SplatPos;
 
 uniform mat2 uSigma; //sigma matrix
 uniform vec4 uColor; //sigma matrix
-uniform float uN;
 
 float p(vec2 x, vec2 mu)
 {
