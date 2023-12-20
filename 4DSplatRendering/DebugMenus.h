@@ -5,8 +5,27 @@
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 #include <string>
+#include <map>
 
-namespace DebugMenu 
+template<class T>
+class Menu {
+public:
+    Menu(const Menu<T>&) = delete;
+
+    Menu(T& MenuData);
+    ~Menu();
+
+    inline T& GetMenuData();
+
+    bool IsShowing();
+    void SetIsShowing();
+
+private:
+    bool isShowing = false;
+    T Data;
+};
+
+namespace DebugMenus
 {
 
     struct Splat2DMenuData {
@@ -32,6 +51,27 @@ namespace DebugMenu
         std::vector<Shader*> shaders;
         int selectedShaderIdx = -1;
         int selectedSourceIdx = -1;
+    };
+
+    struct BlendOpt {
+        size_t selected0 = GL_SRC_ALPHA;
+        size_t selected1 = GL_ONE_MINUS_SRC_ALPHA;
+        std::map < size_t, std::string> SelectOpt{
+            { GL_ZERO, "GL_ZERO" }, 
+            { GL_ONE, "GL_ONE" },
+            { GL_SRC_COLOR, "GL_SRC_COLOR" },
+            { GL_ONE_MINUS_SRC_COLOR, "GL_ONE_MINUS_SRC_COLOR" },
+            { GL_DST_COLOR, "GL_DST_COLOR" },
+            { GL_ONE_MINUS_DST_COLOR, "GL_ONE_MINUS_DST_COLOR" },
+            { GL_SRC_ALPHA, "GL_SRC_ALPHA" },
+            { GL_ONE_MINUS_SRC_ALPHA, "GL_ONE_MINUS_SRC_ALPHA" },
+            { GL_DST_ALPHA, "GL_DST_ALPHA" },
+            { GL_ONE_MINUS_DST_ALPHA, "GL_ONE_MINUS_DST_ALPHA" },
+            { GL_CONSTANT_COLOR, "GL_CONSTANT_COLOR" },
+            { GL_ONE_MINUS_CONSTANT_COLOR, "GL_ONE_MINUS_CONSTANT_COLOR" },
+            { GL_CONSTANT_ALPHA, "GL_CONSTANT_ALPHA" },
+            { GL_ONE_MINUS_CONSTANT_ALPHA, "GL_ONE_MINUS_CONSTANT_ALPHA" },
+        };
     };
 
     struct CamInfoData {
@@ -93,6 +133,45 @@ namespace DebugMenu
 
         ImGui::ColorPicker3("Splat Color", (data->color));
 
+
+        ImGui::End();
+    }
+
+    void BlendOptMenu(BlendOpt* data)
+    {
+        ImGui::Begin("BlendOptMenu");
+
+        std::string prev0 = data->selected0 < 0 ? "<default>" : data->SelectOpt[data->selected0];
+        if (ImGui::BeginCombo("sfactor", prev0.c_str()))
+        {
+            for (const auto &elem : data->SelectOpt)
+            {
+                const bool is_selected = (data->selected0 == elem.first);
+                if (ImGui::Selectable(elem.second.c_str(), is_selected))
+                {
+                    data->selected0 = elem.first;
+                }
+                if (is_selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
+
+        std::string prev1 = data->selected1 < 0 ? "<default>" : data->SelectOpt[data->selected1];
+        if (ImGui::BeginCombo("dfactor", prev1.c_str()))
+        {
+            for (const auto& elem : data->SelectOpt)
+            {
+                const bool is_selected = (data->selected1 == elem.first);
+                if (ImGui::Selectable(elem.second.c_str(), is_selected))
+                {
+                    data->selected1 = elem.first;
+                }
+                if (is_selected)
+                    ImGui::SetItemDefaultFocus();
+            }
+            ImGui::EndCombo();
+        }
 
         ImGui::End();
     }

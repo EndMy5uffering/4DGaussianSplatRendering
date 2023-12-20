@@ -4,7 +4,7 @@ layout(location = 0) in vec4 inPos;
 layout(location = 1) in vec2 texPos;
 
 uniform mat3 uJ;
-uniform mat3 uW;
+uniform mat3 uW; 
 
 out mat2 Sigma;
 

@@ -29,7 +29,7 @@
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
-#include "DebugMenu.h"
+#include "DebugMenus.h"
 
 #include "Gizmo.h"
 
@@ -146,7 +146,7 @@ int main(void)
     glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
     cam.SetFar(5000.0f);
 
-    Geometry::Box background(glm::vec3(0.0f), glm::vec3(2500.0f));
+    Geometry::Box background(glm::vec3(0.0f), glm::vec3(500.0f));
 
     Shader SplatComputeShader;
     SplatComputeShader.AddShaderSource("../Shader/Splat2DComputeShader.GLSL", GL_COMPUTE_SHADER);
@@ -158,7 +158,7 @@ int main(void)
 
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
 
-    size_t numOfSplats = 500;
+    size_t numOfSplats = 1500;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
@@ -181,15 +181,18 @@ int main(void)
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    DebugMenu::Menu01Data menuData;
+    DebugMenus::Splat2DMenuData menuData;
     menuData.angle = 0.0f;
     menuData.l0 = 4.0f;
     menuData.l1 = 2.0f;
 
-    DebugMenu::Menu02Data menu2Data;
+    DebugMenus::Menu02Data menu2Data;
     menu2Data.buffer = "This could be your shader :D";
     menu2Data.shaders.push_back(&SplatRenderShader);
 
+    DebugMenus::BlendOpt blendOpt;
+    blendOpt.selected0 = GL_SRC_ALPHA;
+    blendOpt.selected1 = GL_ONE_MINUS_SRC_ALPHA;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -205,7 +208,9 @@ int main(void)
         
 
         glEnable(GL_BLEND);
-        glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glDisable(GL_DEPTH_TEST);
+        //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+        glBlendFunc(blendOpt.selected0, blendOpt.selected1);
         s2d.SetLambas(menuData.l0, menuData.l1);
         float ang = menuData.angle * PI / 180.0f;
         s2d.SetVectors({ cos(ang), sin(ang) });
@@ -225,18 +230,20 @@ int main(void)
             splats[i]->Draw(renderer, cam);
         }
         glDisable(GL_BLEND);
+        glEnable(GL_DEPTH_TEST);
 
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        DebugMenu::MainMenuStrip();
-        DebugMenu::Splat2DMenu(&menuData);
-        DebugMenu::ShaderEditor(&menu2Data);
+        DebugMenus::MainMenuStrip();
+        DebugMenus::Splat2DMenu(&menuData);
+        DebugMenus::ShaderEditor(&menu2Data);
+        DebugMenus::BlendOptMenu(&blendOpt);
         std::string val = getTextInfo(cam);
-        DebugMenu::CamInfo(io, val);
-        DebugMenu::Splat3DMenu();
+        DebugMenus::CamInfo(io, val);
+        //DebugMenu::Splat3DMenu();
         //IMGUI
 
         ImGui::Render();

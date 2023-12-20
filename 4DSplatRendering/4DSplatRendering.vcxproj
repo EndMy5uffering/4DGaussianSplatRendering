@@ -171,7 +171,7 @@
     <ClInclude Include="..\Dependencies\IMGUI\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_truetype.h" />
     <ClInclude Include="Camera.h" />
-    <ClInclude Include="DebugMenu.h" />
+    <ClInclude Include="DebugMenus.h" />
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="Gizmo.h" />
     <ClInclude Include="IndexBuffer.h" />

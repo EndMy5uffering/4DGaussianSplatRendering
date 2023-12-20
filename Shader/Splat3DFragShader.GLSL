@@ -20,6 +20,6 @@ void main()
 {
 	float c = p();
 
-    color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c);
+    color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c*uColor.w);
 	if(c < 0.01) discard;
 }

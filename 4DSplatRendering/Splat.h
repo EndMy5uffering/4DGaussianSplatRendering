@@ -1,6 +1,7 @@
 #pragma once
 
 #include <glm/glm.hpp>
+#include <glm/gtc/quaternion.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/matrix_operation.hpp>
 #include "Shader.h"
@@ -104,65 +105,55 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::vec3 v0, glm::vec3 v1, float l0, float l1, float l2, Shader shader, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader shader, Camera& cam) : 
         mPosition(pos),
-        mw0{v0},
-        mw1{v1},
-        mw2{glm::vec4(0.0f)},
+        mQuat{quaternion},
         ml0{l0},
         ml1{l1},
         ml2{l2},
         mShader{shader},
         mCam{cam}
     {
-        CalcAndSetSigma();
+
     }
 
 	~Splat3D() {}
-
-    void CalcAndSetSigma()
-    {
-        this->mw0 = glm::normalize(this->mw0);
-        glm::vec3 tmpW2 = glm::normalize(glm::cross(this->mw0, this->mw1));
-        glm::vec3 tmpW1 = glm::normalize(glm::cross(this->mw0, tmpW2));
-        this->mw2 = tmpW2;
-        this->mw1 = tmpW1;
-
-        glm::mat4 modle = glm::mat4
-        {
-            mw0.x * ml0, mw0.y, mw0.z, 0.0f,
-            mw1.x, mw1.y * ml1, mw1.z, 0.0f,
-            mw2.x, mw2.y, mw2.z * ml2, 0.0f,
-            mPosition.x, mPosition.y, mPosition.z, mPosition.w
-        };
-
-        this->mModle = modle;
-    }
 
     void Draw(Renderer r, Camera c)
     {
         mShader.Bind();
 
-        glm::mat4 modleView = this->mModle * this->mCam.GetViewMatrix();
-        glm::vec3 U{modleView[3][0], modleView[3][1], modleView[3][2]};
-        float l = glm::l2Norm(U);
-        glm::mat3 J{
-            1.0f / U.z, 0.0, U.x / l,
-            0.0f, 1.0f / U.z, U.y / l,
-            -U.x / (U.z * U.z), -U.y / (U.z * U.z), U.z / l
-        };
-        glm::mat3 W{
-            modleView[0][0], modleView[0][1], modleView[0][2],
-            modleView[1][0], modleView[1][1], modleView[1][2],
-            modleView[2][0], modleView[2][1], modleView[2][2],
+        glm::mat4 view = c.GetViewMatrix();
+        glm::mat3 view3
+        {
+            view[0][0], view[0][1], view[0][2],
+            view[1][0], view[1][1], view[1][2],
+            view[2][0], view[2][1], view[2][2],
         };
 
-        glm::mat3 T3D = J * W;
-        glm::mat2 Vhat{
-            (T3D[0][0] * T3D[0][0]) + (T3D[0][1] * T3D[0][1]), (T3D[0][0] * T3D[0][1]) + (T3D[0][1] * T3D[1][1]),
-            (T3D[0][0] * T3D[1][0]) + (T3D[0][1] * T3D[1][1]), (T3D[1][0] * T3D[1][0]) + (T3D[1][1] * T3D[1][1])
+        glm::vec4 posCamSpace = mPosition * c.GetViewMatrix();
+
+        float z2 = posCamSpace.z * posCamSpace.z;
+
+        glm::mat3 J
+        {
+            1.0f / posCamSpace.z, 0.0, -posCamSpace.x / z2,
+            0.0f, 1.0f / posCamSpace.z, -posCamSpace.y / z2,
+            0.0f, 0.0f, 0.0f
         };
 
+        glm::mat3 V
+        {
+            1.0, 0.0, 0.0,
+            0.0, 1.0, 0.0,
+            0.0, 0.0, 1.0
+        };
+
+        glm::mat3 T = J * view3;
+
+        glm::mat3 cov3 = glm::transpose(T) * V * T;
+
+        
 
         mBillboard.Render(r);
     }
@@ -172,14 +163,11 @@ public:
         this->ml0 = l0;
         this->ml1 = l1;
         this->ml2 = l2;
-        CalcAndSetSigma();
     }
 
-    void SetVectors(glm::vec3 v0, glm::vec3 v1)
+    void SetQuaternion(glm::quat quat)
     {
-        this->mw0 = v0;
-        this->mw1 = v1;
-        CalcAndSetSigma();
+        this->mQuat = quat;
     }
 
     void SetPosition(glm::vec4 pos)
@@ -200,11 +188,8 @@ public:
 private:
     float ml0, ml1, ml2;
     glm::vec3 mColor;
-    glm::vec3 mw0;
-    glm::vec3 mw1;
-    glm::vec3 mw2;
+    glm::quat mQuat;
     glm::vec4 mPosition;
-    glm::mat4 mModle;
     Shader &mShader;
     Camera& mCam;
     Geometry::Billboard mBillboard;
