@@ -105,13 +105,14 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader shader, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, glm::vec4 color, Camera& cam) : 
         mPosition(pos),
         mQuat{quaternion},
         ml0{l0},
         ml1{l1},
         ml2{l2},
         mShader{shader},
+        mColor{color},
         mCam{cam}
     {
 
@@ -119,11 +120,11 @@ public:
 
 	~Splat3D() {}
 
-    void Draw(Renderer r, Camera c)
+    void Draw(Renderer r)
     {
         mShader.Bind();
 
-        glm::mat4 view = c.GetViewMatrix();
+        glm::mat4 view = mCam.GetViewMatrix();
         glm::mat3 view3
         {
             view[0][0], view[0][1], view[0][2],
@@ -131,7 +132,7 @@ public:
             view[2][0], view[2][1], view[2][2],
         };
 
-        glm::vec4 posCamSpace = mPosition * c.GetViewMatrix();
+        glm::vec4 posCamSpace = mPosition * mCam.GetViewMatrix();
 
         float z2 = posCamSpace.z * posCamSpace.z;
 
@@ -153,7 +154,36 @@ public:
 
         glm::mat3 cov3 = glm::transpose(T) * V * T;
 
-        
+        float diag1 = cov3[0][0];
+        float offdiag = cov3[0][1];
+        float diag2 = cov3[1][1];
+
+        float mid = 0.5 * (diag1 + diag2);
+        glm::vec2 vt{ (diag1 - diag2) / 2.0f, offdiag };
+        float rad = sqrtf(vt.x * vt.x + vt.y * vt.y);
+        float l0 = mid + rad;
+        float l1 = mid - rad;
+
+        glm::vec2 diagVec = glm::normalize(glm::vec2{offdiag, l0 - diag1});
+        glm::vec2 v0 = sqrtf(2.0 * l0) * diagVec;
+        glm::vec2 v1 = sqrtf(2.0 * l1) * glm::vec2{diagVec.y, -diagVec.x};
+
+        glm::mat2 R{v0, v1};
+        glm::mat2 S = glm::diagonal2x2(glm::vec2{ l0, l1 });
+
+        glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
+
+        //TODO: calculate from top 2x2 mat of cov3
+        //see: https://github.com/KeKsBoTer/web-splat/blob/master/src/shaders/preprocess.wgsl
+
+        mShader.SetUniform4f("uColor", mColor);
+        mShader.SetUniform2f("uScale", l0, l1);
+        mShader.SetUniform2f("uVec1", v0);
+        mShader.SetUniform2f("uVec2", v1);
+        mShader.SetUniformMat2f("uSigma", Sig);
+        mShader.SetUniform4f("uSplatPos", posCamSpace.x / posCamSpace.w, posCamSpace.y / posCamSpace.w, posCamSpace.z / posCamSpace.w, 1.0f);
+        mShader.SetUniformMat4f("uProj", mCam.GetProjMatrix());
+        mShader.SetUniformMat4f("uView", mCam.GetViewMatrix());
 
         mBillboard.Render(r);
     }
@@ -180,14 +210,14 @@ public:
         return mPosition;
     }
 
-    void SetColor(glm::vec3 color)
+    void SetColor(glm::vec4 color)
     {
         this->mColor = color;
     }
 
 private:
     float ml0, ml1, ml2;
-    glm::vec3 mColor;
+    glm::vec4 mColor;
     glm::quat mQuat;
     glm::vec4 mPosition;
     Shader &mShader;
@@ -199,7 +229,7 @@ private:
 class Splat2D
 {
 public:
-    Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader &renderShader, glm::vec3 color) :
+    Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader &renderShader, glm::vec4 color) :
         mPosition(pos),
         mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
         mVertFragShader(renderShader),
@@ -261,14 +291,14 @@ public:
         return mPosition;
     }
 
-    void SetColor(glm::vec3 color) 
+    void SetColor(glm::vec4 color) 
     {
         this->mColor = color;
     }
 
 private:
     float ml0, ml1;
-    glm::vec3 mColor;
+    glm::vec4 mColor;
     glm::vec2 mv0;
     glm::vec2 mv1;
     glm::vec3 mPosition;

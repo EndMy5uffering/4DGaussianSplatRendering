@@ -23,6 +23,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include <glm/gtc/quaternion.hpp>
 
 #include "Splat.h"
 
@@ -156,9 +157,18 @@ int main(void)
     SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader.BuildShader();
 
-    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f});
+    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f, 1.0f});
 
-    size_t numOfSplats = 1500;
+    Splat3D s3d(
+        glm::vec4{ -10.0f, 0.0f, 0.0f, 0.0f }, 
+        glm::quatLookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{0.0f, 1.0f, 0.0f}), 
+        5.0f, 1.0f, 5.0f, 
+        SplatRenderShader, 
+        glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
+        cam
+    );
+
+    size_t numOfSplats = 5000;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
@@ -166,12 +176,12 @@ int main(void)
     float to = 50;
     for(size_t i = 0; i < numOfSplats; ++i)
     {
-        Splat2D* s = new Splat2D({ frand(from, to), frand(from, to), frand(from, to) },
+        Splat2D* s = new Splat2D({ 100 + frand(from, to), frand(from, to), frand(from, to) },
             getVecFromAngle(frand(0, 360.0f)),
             frand(0.5f, 10.0f),
             frand(0.5f, 10.0f),
             SplatRenderShader,
-            { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f) });
+            { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f), frand(0.1f, 1.0f) });
         splats.push_back(s);
     }
 
@@ -194,6 +204,8 @@ int main(void)
     blendOpt.selected0 = GL_SRC_ALPHA;
     blendOpt.selected1 = GL_ONE_MINUS_SRC_ALPHA;
 
+    DebugMenus::MenueStripData menueStripData;
+
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
@@ -214,9 +226,11 @@ int main(void)
         s2d.SetLambas(menuData.l0, menuData.l1);
         float ang = menuData.angle * PI / 180.0f;
         s2d.SetVectors({ cos(ang), sin(ang) });
-        s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2] });
+        s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2], menuData.color[3] });
         s2d.SetPosition(menuData.splatPos);
-        //s2d.Draw(renderer, cam);
+        s2d.Draw(renderer, cam);
+
+        s3d.Draw(renderer);
 
 
         std::sort(splats.begin(), splats.end(), [](Splat2D *a, Splat2D *b) {
@@ -237,12 +251,12 @@ int main(void)
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        DebugMenus::MainMenuStrip();
-        DebugMenus::Splat2DMenu(&menuData);
-        DebugMenus::ShaderEditor(&menu2Data);
-        DebugMenus::BlendOptMenu(&blendOpt);
+        DebugMenus::Splat2DMenu(&menuData, &menueStripData.show_2DSplat);
+        DebugMenus::ShaderEditor(&menu2Data, &menueStripData.show_ShaderEditor);
+        DebugMenus::BlendOptMenu(&blendOpt, &menueStripData.show_BlendOpt);
         std::string val = getTextInfo(cam);
-        DebugMenus::CamInfo(io, val);
+        DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
+        DebugMenus::MainMenuStrip(&menueStripData);
         //DebugMenu::Splat3DMenu();
         //IMGUI
 

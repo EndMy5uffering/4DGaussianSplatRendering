@@ -34,6 +34,7 @@ namespace DebugMenus
         float l1 = 0.0f;
         glm::vec3 splatPos{0.0,0.0,0.0};
         float color[3] = {0.0f, 0.0f, 0.0f};
+        bool is_Showing = true;
     };
 
     struct Splat3DMenuData {
@@ -43,7 +44,7 @@ namespace DebugMenus
         float l1 = 0.0f;
         float l2 = 0.0f;
         glm::vec3 splatPos{0.0, 0.0, 0.0};
-        float color[3] = { 0.0f, 0.0f, 0.0f };
+        float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 
     struct Menu02Data {
@@ -78,10 +79,18 @@ namespace DebugMenus
         std::string camInfo = "";
     };
 
-	void Splat2DMenu(Splat2DMenuData* data)
-	{
+    struct MenueStripData {
+        bool show_2DSplat = false;
+        bool show_CamInfo = false;
+        bool show_BlendOpt = false; 
+        bool show_ShaderEditor = false;
+    };
 
-        ImGui::Begin("2D Splats");
+	void Splat2DMenu(Splat2DMenuData* data, bool* is_Showing)
+	{
+        if (!*is_Showing) return;
+
+        ImGui::Begin("2D Splats", is_Showing);
 
         ImGui::SliderFloat("Angle", &(data->angle), -180.0f, 180.0f);
         ImGui::SliderFloat("l0", &(data->l0), 0.0f, 10.0f);
@@ -96,21 +105,24 @@ namespace DebugMenus
 
         ImGui::ColorPicker3("Splat Color", (data->color));
 
-
         ImGui::End();
 	}
 
-    void CamInfo(ImGuiIO& io, std::string& info)
+    void CamInfo(ImGuiIO& io, std::string& info, bool* is_Showing)
     {
-        ImGui::Begin("Cam Info");
+        if (!*is_Showing) return;
+
+        ImGui::Begin("Cam Info", is_Showing);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
         ImGui::Text(info.c_str());
         ImGui::End();
     }
 
-    void Splat3DMenu(Splat3DMenuData* data) 
+    void Splat3DMenu(Splat3DMenuData* data, bool* is_Showing)
     {
-        ImGui::Begin("3D Splats");
+        if (!*is_Showing) return;
+
+        ImGui::Begin("3D Splats", is_Showing);
 
         float x0 = data->v0.x, x1 = data->v0.y, x2 = data->v0.z,
             y0 = data->v1.x, y1 = data->v1.y, y2 = data->v1.z;
@@ -131,15 +143,17 @@ namespace DebugMenus
 
         data->splatPos = glm::vec3{ x,y,z };
 
-        ImGui::ColorPicker3("Splat Color", (data->color));
+        ImGui::ColorEdit4("Splat Color", (data->color), ImGuiColorEditFlags_AlphaBar);
 
 
         ImGui::End();
     }
 
-    void BlendOptMenu(BlendOpt* data)
+    void BlendOptMenu(BlendOpt* data, bool* is_Showing)
     {
-        ImGui::Begin("BlendOptMenu");
+        if (!*is_Showing) return;
+
+        ImGui::Begin("BlendOptMenu", is_Showing);
 
         std::string prev0 = data->selected0 < 0 ? "<default>" : data->SelectOpt[data->selected0];
         if (ImGui::BeginCombo("sfactor", prev0.c_str()))
@@ -176,9 +190,11 @@ namespace DebugMenus
         ImGui::End();
     }
 
-    void ShaderEditor(Menu02Data *data)
+    void ShaderEditor(Menu02Data *data, bool* is_Showing)
     {
-        ImGui::Begin("Shader Editor");
+        if (!*is_Showing) return;
+
+        ImGui::Begin("Shader Editor", is_Showing);
 
         std::string prev = data->selectedShaderIdx != -1 && data->selectedSourceIdx != -1 ?
             data->shaders[data->selectedShaderIdx]->GetShourceByIdx(data->selectedSourceIdx)->path
@@ -249,18 +265,38 @@ namespace DebugMenus
         ImGui::End();
     }
 
-    void MainMenuStrip() 
+    void MainMenuStrip(MenueStripData* data) 
     {
         ImGui::BeginMainMenuBar();
 
         if (ImGui::BeginMenu("File"))
         {
-            ImGui::MenuItem("New");
-            ImGui::MenuItem("Create");
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Edit"))
+        {
+            if (ImGui::BeginMenu("Splats"))
+            {
+                if (ImGui::Button("Splat 2D Menu")) data->show_2DSplat = !data->show_2DSplat;
+                if (ImGui::Button("Splat 3D Menu")) {}
+                if (ImGui::Button("Splat 3D Menu")) {}
+                ImGui::EndMenu();
+            }
+            if (ImGui::Button("Blend functions")) data->show_BlendOpt = !data->show_BlendOpt;
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View"))
+        {
+            if (ImGui::Button("Cam info")) data->show_CamInfo = !data->show_CamInfo;
+            if (ImGui::Button("Shader editor")) data->show_ShaderEditor = !data->show_ShaderEditor;
             ImGui::EndMenu();
         }
 
         ImGui::EndMainMenuBar();
     }
+
+    
 
 }
