@@ -14,11 +14,7 @@ public:
 	glm::vec3 orientation = glm::vec3(1.0f, 0.0f, 0.0f);
 	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
 
-	int width;
-	int height;
 
-	float sensitivity = 100.0f;
-	float speed = 0.1f;
 
 	Camera(int width, int height);
 	Camera(int width, int height, glm::vec3 startPos);
@@ -30,10 +26,15 @@ public:
 	glm::mat4 GetViewMatrix();
 	glm::mat4 GetProjMatrix();
 	glm::vec3 GetPosition();
+	float GetFar();
+	float GetNear();
+	float GetFOV();
+	float GetScreenWidth();
+	float GetScreenHeight();
 
 	void HandleInput(GLFWwindow *window, bool imguiActive = false);
-	void SetWidth(int width) { this->width = width; }
-	void SetHeight(int height) { this->height = height; }
+	void SetWidth(int width) { this->mWidth = width; }
+	void SetHeight(int height) { this->mHeight = height; }
 	void SetNear(float near) { this->mNear = near; }
 	void SetFar(float far) { this->mFar = far; }
 	void SetFOV(float fov) { this->mFOV = fov; }
@@ -47,5 +48,11 @@ private:
 	float mFOV = 60.0f;
 	float mNear = 0.1f;
 	float mFar = 256.0f;
+
+	int mWidth;
+	int mHeight;
+
+	float mSensitivity = 100.0f;
+	float mSpeed = 0.1f;
 };
 
