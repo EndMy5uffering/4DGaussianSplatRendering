@@ -75,10 +75,6 @@ namespace DebugMenus
         };
     };
 
-    struct CamInfoData {
-        std::string camInfo = "";
-    };
-
     struct MenueStripData {
         bool show_2DSplat = false;
         bool show_CamInfo = false;
@@ -114,6 +110,13 @@ namespace DebugMenus
 
         ImGui::Begin("Cam Info", is_Showing);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
+        ImGui::Text(info.c_str());
+        ImGui::End();
+    }
+
+    void TextScreen(const std::string &name, std::string& info)
+    {
+        ImGui::Begin(name.c_str());
         ImGui::Text(info.c_str());
         ImGui::End();
     }

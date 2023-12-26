@@ -3,26 +3,36 @@
 layout(location = 0) in vec4 inPos;
 layout(location = 1) in vec2 texPos;
 
-uniform mat3 uJ;
-uniform mat3 uW; 
+uniform vec2 uScale;
+uniform vec2 uVec1;
+uniform vec2 uVec2;
+uniform mat4 uProj;
+//uniform mat4 uViewProj;
 
-out mat2 Sigma;
+mat4 mScale = mat4(
+    uScale.x*10,      0.0, 0.0, 0.0,
+         0.0, uScale.y*10, 0.0, 0.0,
+         0.0,      0.0, 1.0, 0.0,
+         0.0,      0.0, 0.0, 1.0
+);
+
+mat4 mRot = mat4(
+    uVec1.x, uVec2.x, 0.0, 0.0,
+    uVec1.y, uVec2.y, 0.0, 0.0,
+    0.0, 0.0, 1.0, 0.0,
+    0.0, 0.0, 0.0, 1.0
+);
+
+mat4 mPosRotScal = mRot * mScale;
+
+mat4 offset = mat4(
+    0.1, 0.0, 0.0, 0.0,
+    0.0, 0.1, 0.0, 0.0,
+    0.0, 0.0, 0.1, 0.0,
+    0.0, 0.0, -1.0, 1.0
+);
 
 void main()
 {
-    mat4 mvMatrix = uView * mPosRotScal;
-
-    mvMatrix[0][0] = mPosRotScal[0][0];
-    mvMatrix[0][1] = mPosRotScal[0][1];
-    mvMatrix[0][2] = mPosRotScal[0][2];
-
-    mvMatrix[1][0] = mPosRotScal[1][0];
-    mvMatrix[1][1] = mPosRotScal[1][1];
-    mvMatrix[1][2] = mPosRotScal[1][2];
-    
-    mvMatrix[2][0] = mPosRotScal[2][0];
-    mvMatrix[2][1] = mPosRotScal[2][1];
-    mvMatrix[2][2] = mPosRotScal[2][2];
-
-    gl_Position = uProj * mvMatrix * inPos;
+    gl_Position = uProj * offset * mPosRotScal * inPos;
 }

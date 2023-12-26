@@ -86,6 +86,23 @@ namespace Geometry
 
     }
 
+    namespace Billboard2DVertexData
+    {
+        const float BillboardVertexBuff[] = {
+            //   pos    |    uv     |
+            -1.0f,  1.0f, 0.0f, 1.0f, // 0 0
+            -1.0f, -1.0f, 1.0f, 1.0f, // 1 1
+             1.0f,  1.0f, 1.0f, 0.0f, // 2 2
+             1.0f, -1.0f, 0.0f, 0.0f, // 3 3
+        };
+
+        const unsigned int BoxIdxBuff[] = {
+            0, 1, 2,
+            2, 1, 3,
+        };
+
+    }
+
 
 	class Box
 	{

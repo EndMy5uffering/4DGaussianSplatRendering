@@ -9,6 +9,8 @@
 #include "Camera.h"
 #include "Geometry.h"
 #include <math.h>
+#include <sstream>
+#include "Utils.h"
 
 #define PI 3.141592f
 //#define LCalc(mat) (2.0f * powf(PI, 3.f/2.f) * sqrtf(glm::determinant(mat)))
@@ -132,15 +134,15 @@ public:
             view[2][0], view[2][1], view[2][2],
         };
 
-        glm::vec4 posCamSpace = mPosition * mCam.GetViewMatrix();
+        glm::vec4 posCamSpace = view * mPosition;
 
         float z2 = posCamSpace.z * posCamSpace.z;
 
         glm::mat3 J
         {
-            1.0f / posCamSpace.z, 0.0, -posCamSpace.x / z2,
-            0.0f, 1.0f / posCamSpace.z, -posCamSpace.y / z2,
-            0.0f, 0.0f, 0.0f
+            1.0f / posCamSpace.z, 0.0, -(1.0f * posCamSpace.x) / z2,
+                0.0f, 1.0f / posCamSpace.z, -(1.0f * posCamSpace.y) / z2,
+                0.0f, 0.0f, 0.0f
         };
 
         glm::mat3 V
@@ -150,23 +152,28 @@ public:
             0.0, 0.0, 1.0
         };
 
-        glm::mat3 T = J * view3;
+        glm::mat3 T = J * glm::transpose(view3);
 
         glm::mat3 cov3 = glm::transpose(T) * V * T;
 
-        float diag1 = cov3[0][0];
-        float offdiag = cov3[0][1];
-        float diag2 = cov3[1][1];
+        float a = cov3[0][0];
+        float d = cov3[1][1];
+        float b = cov3[0][1];
 
-        float mid = 0.5 * (diag1 + diag2);
-        glm::vec2 vt{ (diag1 - diag2) / 2.0f, offdiag };
-        float rad = sqrtf(vt.x * vt.x + vt.y * vt.y);
-        float l0 = mid + rad;
-        float l1 = mid - rad;
+        float aa = a * a;
+        float dd = d * d;
+        float bb = b * b;
 
-        glm::vec2 diagVec = glm::normalize(glm::vec2{offdiag, l0 - diag1});
-        glm::vec2 v0 = sqrtf(2.0 * l0) * diagVec;
-        glm::vec2 v1 = sqrtf(2.0 * l1) * glm::vec2{diagVec.y, -diagVec.x};
+        float f0 = (d + a);
+        
+        float k = sqrt((aa - 2 * a * b + bb) + (4.0f * dd));
+
+        float l0 = (f0 + k) * 0.5f;
+        float l1 = (f0 - k) * 0.5f;
+
+        glm::vec2 diagVec = glm::normalize(glm::vec2{b, l0 - a});
+        glm::vec2 v0 = diagVec;
+        glm::vec2 v1 = glm::vec2{diagVec.y, -diagVec.x};
 
         glm::mat2 R{v0, v1};
         glm::mat2 S = glm::diagonal2x2(glm::vec2{ l0, l1 });
@@ -176,14 +183,34 @@ public:
         //TODO: calculate from top 2x2 mat of cov3
         //see: https://github.com/KeKsBoTer/web-splat/blob/master/src/shaders/preprocess.wgsl
 
-        mShader.SetUniform4f("uColor", mColor);
+        std::stringstream ss;
+        ss << Utils::Mat4ToStr("View", view);
+        ss << Utils::V4ToStr("Screen_Space_Pos", posCamSpace);
+        ss << Utils::Mat3ToStr("J", J);
+        ss << Utils::Mat3ToStr("T", T);
+        ss << Utils::Mat3ToStr("cov3", cov3);
+        ss << "\n";
+        ss << "a: " << a << "\n";
+        ss << "d: " << d << "\n";
+        ss << "b: " << b << "\n";
+        ss << "aa: " << aa << "\n";
+        ss << "dd: " << dd << "\n";
+        ss << "bb: " << bb << "\n";
+        ss << "f0: (" << d << " + " << a << ") = " << f0 << "\n";
+        ss << "sqrt_inner: (" << aa << " - 2 * " << a << " * " << b << " + " << bb << ") + (4.0f * " << dd << ") = " << (aa - 2 * a * b + bb) + (4.0f * dd) << "\n";
+        ss << "l0: " << l0 << "\n";
+        ss << "l1: " << l1 << "\n";
+        ss << Utils::V2ToStr("V0", v0);
+        ss << Utils::V2ToStr("V1", v1);
+        ss << Utils::Mat2ToStr("Sig", Sig);
+        this->splatdata = ss.str();
+
         mShader.SetUniform2f("uScale", l0, l1);
         mShader.SetUniform2f("uVec1", v0);
         mShader.SetUniform2f("uVec2", v1);
-        mShader.SetUniformMat2f("uSigma", Sig);
-        mShader.SetUniform4f("uSplatPos", posCamSpace.x / posCamSpace.w, posCamSpace.y / posCamSpace.w, posCamSpace.z / posCamSpace.w, 1.0f);
+        mShader.SetUniformMat4f("uCam", mCam.GetViewMatrix());
         mShader.SetUniformMat4f("uProj", mCam.GetProjMatrix());
-        mShader.SetUniformMat4f("uView", mCam.GetViewMatrix());
+        //mShader.SetUniformMat4f("uViewProj", mCam.GetProjMatrix());
 
         mBillboard.Render(r);
     }
@@ -193,6 +220,11 @@ public:
         this->ml0 = l0;
         this->ml1 = l1;
         this->ml2 = l2;
+    }
+
+    glm::mat4 GetProjMat() 
+    {
+        return glm::perspective(glm::radians(mCam.GetFOV()), (mCam.GetScreenWidth() / mCam.GetScreenHeight()), 1.0f, mCam.GetFar());
     }
 
     void SetQuaternion(glm::quat quat)
@@ -215,6 +247,11 @@ public:
         this->mColor = color;
     }
 
+    std::string GetSplatData() 
+    {
+        return this->splatdata;
+    }
+
 private:
     float ml0, ml1, ml2;
     glm::vec4 mColor;
@@ -223,6 +260,7 @@ private:
     Shader &mShader;
     Camera& mCam;
     Geometry::Billboard mBillboard;
+    std::string splatdata;
 };
 
 

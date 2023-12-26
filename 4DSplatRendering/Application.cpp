@@ -34,6 +34,9 @@
 
 #include "Gizmo.h"
 
+#include "Utils.h"
+
+
 int SCREEN_WIDTH = 980;
 int SCREEN_HEIGHT = 680;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
@@ -51,24 +54,11 @@ glm::vec2 getVecFromAngle(float ang)
 
 std::string getTextInfo(Camera cam) 
 {
-    std::stringstream ss;
     glm::mat4 vmat = cam.GetViewMatrix();
     glm::mat4 projmat = cam.GetProjMatrix();
-    ss << "ViewMatrix:\n";
-    ss << "[ " << vmat[0][0] << ", " << vmat[0][1] << ", " << vmat[0][2] << ", " << vmat[0][3] << " ]\n";
-    ss << "[ " << vmat[1][0] << ", " << vmat[1][1] << ", " << vmat[1][2] << ", " << vmat[1][3] << " ]\n";
-    ss << "[ " << vmat[2][0] << ", " << vmat[2][1] << ", " << vmat[2][2] << ", " << vmat[2][3] << " ]\n";
-    ss << "[ " << vmat[3][0] << ", " << vmat[3][1] << ", " << vmat[3][2] << ", " << vmat[3][3] << " ]\n";
-    ss << "\n";
-    ss << "ProjMatix:\n";
-    ss << "[ " << projmat[0][0] << ", " << projmat[0][1] << ", " << projmat[0][2] << ", " << projmat[0][3] << " ]\n";
-    ss << "[ " << projmat[1][0] << ", " << projmat[1][1] << ", " << projmat[1][2] << ", " << projmat[1][3] << " ]\n";
-    ss << "[ " << projmat[2][0] << ", " << projmat[2][1] << ", " << projmat[2][2] << ", " << projmat[2][3] << " ]\n";
-    ss << "[ " << projmat[3][0] << ", " << projmat[3][1] << ", " << projmat[3][2] << ", " << projmat[3][3] << " ]\n";
-    ss << "\n";
-
-    return ss.str();
-
+    std::string vmats = Utils::Mat4ToStr("View", vmat);
+    std::string projMats = Utils::Mat4ToStr("Proj", projmat);
+    return vmats + "\n" + projMats;
 }
 
 
@@ -157,18 +147,23 @@ int main(void)
     SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader.BuildShader();
 
+    Shader SplatRenderShader3D;
+    SplatRenderShader3D.AddShaderSource("../Shader/Splat3DFragShader.GLSL", GL_FRAGMENT_SHADER);
+    SplatRenderShader3D.AddShaderSource("../Shader/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
+    SplatRenderShader3D.BuildShader();
+
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f, 1.0f});
 
     Splat3D s3d(
-        glm::vec4{ -10.0f, 0.0f, 0.0f, 0.0f }, 
+        glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }, 
         glm::quatLookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{0.0f, 1.0f, 0.0f}), 
         5.0f, 1.0f, 5.0f, 
-        SplatRenderShader, 
+        SplatRenderShader3D,
         glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
         cam
     );
 
-    size_t numOfSplats = 5000;
+    size_t numOfSplats = 100;
     std::vector<Splat2D*> splats;
     splats.reserve(numOfSplats);
 
@@ -228,7 +223,7 @@ int main(void)
         s2d.SetVectors({ cos(ang), sin(ang) });
         s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2], menuData.color[3] });
         s2d.SetPosition(menuData.splatPos);
-        s2d.Draw(renderer, cam);
+        //s2d.Draw(renderer, cam);
 
         s3d.Draw(renderer);
 
@@ -257,6 +252,10 @@ int main(void)
         std::string val = getTextInfo(cam);
         DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
+
+        std::string splatInfo = s3d.GetSplatData();
+        DebugMenus::TextScreen("Splat Info:", splatInfo);
+
         //DebugMenu::Splat3DMenu();
         //IMGUI
 
