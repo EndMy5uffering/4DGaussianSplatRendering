@@ -80,6 +80,7 @@ namespace DebugMenus
         bool show_CamInfo = false;
         bool show_BlendOpt = false; 
         bool show_ShaderEditor = false;
+        Camera* cam;
     };
 
 	void Splat2DMenu(Splat2DMenuData* data, bool* is_Showing)
@@ -294,6 +295,36 @@ namespace DebugMenus
         {
             if (ImGui::Button("Cam info")) data->show_CamInfo = !data->show_CamInfo;
             if (ImGui::Button("Shader editor")) data->show_ShaderEditor = !data->show_ShaderEditor;
+
+            if (data->cam->IsLockX()) 
+            {
+                if (ImGui::Button("Unlock Cam X")) data->cam->SetLockX(false);
+            }
+            else 
+            {
+                if (ImGui::Button("Lock Cam X")) data->cam->SetLockX(true);
+            }
+                
+            if (data->cam->IsLockY())
+            {
+                if (ImGui::Button("Unlock Cam Y")) data->cam->SetLockY(false);
+            }
+            else
+            {
+                if (ImGui::Button("Lock Cam Y")) data->cam->SetLockY(true);
+            }
+
+            if (ImGui::Button("Reset Cam Pos"))
+            {
+                data->cam->SetPosition({ 0.0, 0.0, 5.0 });
+            }
+
+            if (ImGui::Button("Reset Cam Orientation"))
+            {
+                data->cam->SetOrientation({ 0.0f, 0.0f, -1.0f });
+                data->cam->SetUp({ 0.0f, 1.0f, 0.0f });
+            }
+
             ImGui::EndMenu();
         }
 

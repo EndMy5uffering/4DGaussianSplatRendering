@@ -179,10 +179,10 @@ void Camera::HandleCamRotation(GLFWwindow* window)
 	double rotX = -mSensitivity * (mouseY - int((double)mHeight / 2.0)) / (double)(mHeight);
 	double rotY = -mSensitivity * (mouseX - int((double)mWidth / 2.0)) / (double)(mWidth);
 
-	orientation = glm::rotate(orientation, (float)glm::radians(rotX), glm::normalize(glm::cross(orientation, up)));
+	if(!mLockX) orientation = glm::rotate(orientation, (float)glm::radians(rotX), glm::normalize(glm::cross(orientation, up)));
 
 	glm::vec3 side = glm::normalize(glm::cross(up, orientation));
 	up = glm::normalize(glm::cross(orientation, side));
 
-	orientation = glm::rotate(orientation, (float)glm::radians(rotY), up);
+	if(!mLockY) orientation = glm::rotate(orientation, (float)glm::radians(rotY), up);
 }

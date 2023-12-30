@@ -11,8 +11,8 @@ class Camera
 {
 public:
 	glm::vec3 position;
-	glm::vec3 orientation = glm::vec3(1.0f, 0.0f, 0.0f);
-	glm::vec3 up = glm::vec3(0.0f, 1.0f, 0.0f);
+	glm::vec3 orientation{1.0f, 0.0f, 0.0f};
+	glm::vec3 up{0.0f, 1.0f, 0.0f};
 
 
 
@@ -40,6 +40,14 @@ public:
 	void SetFOV(float fov) { this->mFOV = fov; }
 	void Resize(int width, int height);
 	void HandleCamRotation(GLFWwindow* window);
+	void SetPosition(glm::vec3 npos) { this->position = npos; }
+	void SetOrientation(glm::vec3 norientation) { this->orientation = norientation; }
+	void SetUp(glm::vec3 nup) { this->up = nup; }
+
+	inline bool IsLockX() { return this->mLockX; }
+	inline bool IsLockY() { return this->mLockY; }
+	void SetLockX(bool lock) { this->mLockX = lock; }
+	void SetLockY(bool lock) { this->mLockY = lock; }
 
 private:
 	bool mCaptureMouse = false;
@@ -54,5 +62,8 @@ private:
 
 	float mSensitivity = 100.0f;
 	float mSpeed = 0.1f;
+
+	bool mLockY = false;
+	bool mLockX = false;
 };
 

@@ -17,6 +17,39 @@
 
 namespace SplatUtils 
 {
+    static float maxf(float a, float b) 
+    {
+        return a >= b ? a : b;
+    }
+
+    static inline glm::mat2 GetUpperMat2(glm::mat3 mat) 
+    {
+        return { mat[0][0], mat[0][1], mat[1][0], mat[1][1] };
+    }
+
+    static glm::vec2 GetEigenValues2x2(glm::mat2 mat) 
+    {
+        float d = mat[0][0], e = mat[0][1];
+        float f = mat[1][0], g = mat[1][1];
+
+        float b = -(d + g);
+        float c = ((d * g) - (f * e));
+
+        float sqrtTearm = sqrt((b * b) - (4.0f * c)) / 2.0f;
+        float nb = -b / 2.0f;
+        float l0 = nb + sqrtTearm;
+        float l1 = nb - sqrtTearm;
+
+        return glm::vec2{l0, l1};
+    }
+
+    static glm::vec2 GetEigenVector2x2(const glm::mat2 &mat, float ev) 
+    {
+        float offdiag = mat[0][1] + 0.01f;
+        glm::vec2 eigenVec{1, (ev - mat[0][0]) / offdiag};
+        eigenVec = glm::normalize(eigenVec);
+        return eigenVec;
+    }
 
     static glm::vec3 Swap(const glm::vec3 v, int from, int to)
     {
@@ -133,82 +166,85 @@ public:
             view[1][0], view[1][1], view[1][2],
             view[2][0], view[2][1], view[2][2],
         };
+        view3 = glm::transpose(view3);
 
         glm::vec4 posCamSpace = view * mPosition;
+        glm::vec4 posScreenSpace = mCam.GetProjMatrix() * posCamSpace;
+
+        posScreenSpace = posScreenSpace * (1.0f / posScreenSpace.w);
 
         float z2 = posCamSpace.z * posCamSpace.z;
 
         glm::mat3 J
         {
-            1.0f / posCamSpace.z, 0.0, -(1.0f * posCamSpace.x) / z2,
-                0.0f, 1.0f / posCamSpace.z, -(1.0f * posCamSpace.y) / z2,
-                0.0f, 0.0f, 0.0f
+            1.0f / posCamSpace.z, 0.0,                  -posCamSpace.x / z2,
+            0.0f,                 1.0f / posCamSpace.z, -posCamSpace.y / z2,
+            0.0f,                 0.0f,                 0.0f
         };
 
         glm::mat3 V
         {
-            1.0, 0.0, 0.0,
-            0.0, 1.0, 0.0,
-            0.0, 0.0, 1.0
+            50.0, 0.0, 0.0,
+            0.0, 50.0, 0.0,
+            0.0, 0.0, 50.0
         };
 
-        glm::mat3 T = J * glm::transpose(view3);
+        glm::mat3 T = view3 * J;
 
         glm::mat3 cov3 = glm::transpose(T) * V * T;
-
-        float a = cov3[0][0];
-        float d = cov3[1][1];
-        float b = cov3[0][1];
-
-        float aa = a * a;
-        float dd = d * d;
-        float bb = b * b;
-
-        float f0 = (d + a);
+        glm::mat3 upper = SplatUtils::GetUpperMat2(cov3);
         
-        float k = sqrt((aa - 2 * a * b + bb) + (4.0f * dd));
+        glm::vec2 lambdas = SplatUtils::GetEigenValues2x2(upper);
 
-        float l0 = (f0 + k) * 0.5f;
-        float l1 = (f0 - k) * 0.5f;
+        float l0 = sqrt(lambdas.x);
+        float l1 = sqrt(lambdas.y);
 
-        glm::vec2 diagVec = glm::normalize(glm::vec2{b, l0 - a});
-        glm::vec2 v0 = diagVec;
-        glm::vec2 v1 = glm::vec2{diagVec.y, -diagVec.x};
+        glm::vec2 diagonalVector = glm::normalize(glm::vec2(upper[0][1], l0 - upper[0][0] + 0.3));
 
+        glm::vec2 v0 = diagonalVector;
+        glm::vec2 v1{v0.y, -v0.x};
         glm::mat2 R{v0, v1};
-        glm::mat2 S = glm::diagonal2x2(glm::vec2{ l0, l1 });
-
+        glm::mat2 S{l0, 0.0f, 0.0f, l1};
         glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
 
         //TODO: calculate from top 2x2 mat of cov3
         //see: https://github.com/KeKsBoTer/web-splat/blob/master/src/shaders/preprocess.wgsl
 
         std::stringstream ss;
-        ss << Utils::Mat4ToStr("View", view);
-        ss << Utils::V4ToStr("Screen_Space_Pos", posCamSpace);
-        ss << Utils::Mat3ToStr("J", J);
-        ss << Utils::Mat3ToStr("T", T);
-        ss << Utils::Mat3ToStr("cov3", cov3);
+        ss << Utils::V4ToStr("SplatPos", mPosition) << "\n";
+        ss << Utils::V4ToStr("Cam_space_Pos", posCamSpace) << "\n";
+        ss << Utils::V4ToStr("Screen_Space_Pos", posScreenSpace) << "\n";
+        ss << Utils::Mat4ToStr("View", view) << "\n";
+        ss << Utils::Mat3ToStr("J", J) << "\n";
+        ss << Utils::Mat3ToStr("T = J * view3", T) << "\n";
+        ss << Utils::Mat3ToStr("cov3 = glm::transpose(T) * V * T", cov3) << "\n";
+        ss << Utils::Mat2ToStr("upper", upper) << "\n";
         ss << "\n";
-        ss << "a: " << a << "\n";
-        ss << "d: " << d << "\n";
-        ss << "b: " << b << "\n";
-        ss << "aa: " << aa << "\n";
-        ss << "dd: " << dd << "\n";
-        ss << "bb: " << bb << "\n";
-        ss << "f0: (" << d << " + " << a << ") = " << f0 << "\n";
-        ss << "sqrt_inner: (" << aa << " - 2 * " << a << " * " << b << " + " << bb << ") + (4.0f * " << dd << ") = " << (aa - 2 * a * b + bb) + (4.0f * dd) << "\n";
-        ss << "l0: " << l0 << "\n";
-        ss << "l1: " << l1 << "\n";
-        ss << Utils::V2ToStr("V0", v0);
-        ss << Utils::V2ToStr("V1", v1);
-        ss << Utils::Mat2ToStr("Sig", Sig);
+        ss << "Matrix structure:\n";
+        ss << "-------\n";
+        ss << "| d e |\n";
+        ss << "| f g |\n";
+        ss << "-------\n";
+        ss << "\n";
+        ss << "l0: " << l0 << "\n\n";
+        ss << "l1: " << l1 << "\n\n";
+        ss << Utils::V2ToStr("V0", v0) << "\n";
+        ss << Utils::V2ToStr("V1", v1) << "\n";
+        ss << Utils::Mat2ToStr("Sig", Sig) << "\n";
         this->splatdata = ss.str();
 
+        float z = posScreenSpace.z / posScreenSpace.w;
+        float bound = 1.2 * posScreenSpace.w;
+        if (z < 0. || z > 1. || posScreenSpace.x < -bound || posScreenSpace.x > bound || posScreenSpace.y < -bound || posScreenSpace.y > bound) 
+        {
+            return;
+        }
+
+        mShader.SetUniformMat2f("uSigma", Sig);
         mShader.SetUniform2f("uScale", l0, l1);
         mShader.SetUniform2f("uVec1", v0);
         mShader.SetUniform2f("uVec2", v1);
-        mShader.SetUniformMat4f("uCam", mCam.GetViewMatrix());
+        mShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
         mShader.SetUniformMat4f("uProj", mCam.GetProjMatrix());
         //mShader.SetUniformMat4f("uViewProj", mCam.GetProjMatrix());
 

@@ -6,12 +6,15 @@ layout(location = 1) in vec2 texPos;
 uniform vec2 uScale;
 uniform vec2 uVec1;
 uniform vec2 uVec2;
+uniform vec2 uScreenPos;
 uniform mat4 uProj;
 //uniform mat4 uViewProj;
 
+out vec4 FragPos;
+
 mat4 mScale = mat4(
-    uScale.x*10,      0.0, 0.0, 0.0,
-         0.0, uScale.y*10, 0.0, 0.0,
+    uScale.x*50.0,      0.0, 0.0, 0.0,
+         0.0, uScale.y*50.0, 0.0, 0.0,
          0.0,      0.0, 1.0, 0.0,
          0.0,      0.0, 0.0, 1.0
 );
@@ -35,4 +38,6 @@ mat4 offset = mat4(
 void main()
 {
     gl_Position = uProj * offset * mPosRotScal * inPos;
+    FragPos = gl_Position;
+    gl_Position = gl_Position + vec4(uScreenPos.x, uScreenPos.y, 0.0f, 0.0f);
 }

@@ -200,6 +200,7 @@ int main(void)
     blendOpt.selected1 = GL_ONE_MINUS_SRC_ALPHA;
 
     DebugMenus::MenueStripData menueStripData;
+    menueStripData.cam = &cam;
 
     while (!glfwWindowShouldClose(window))
     {
@@ -236,7 +237,7 @@ int main(void)
 
         for (size_t i = 0; i < splats.size(); ++i)
         {
-            splats[i]->Draw(renderer, cam);
+            //splats[i]->Draw(renderer, cam);
         }
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
