@@ -6,6 +6,7 @@ class VertexBufferLayout;
 class VertexArray
 {
 public:
+	VertexArray(VertexArray&) = delete;
 	VertexArray();
 	~VertexArray();
 

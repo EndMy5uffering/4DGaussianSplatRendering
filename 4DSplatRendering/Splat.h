@@ -140,7 +140,7 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, glm::vec4 color, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, Shader& lineShader, glm::vec4 color, Camera& cam) : 
         mPosition(pos),
         mQuat{quaternion},
         ml0{l0},
@@ -148,14 +148,15 @@ public:
         ml2{l2},
         mShader{shader},
         mColor{color},
-        mCam{cam}
+        mCam{cam},
+        mLineShader{lineShader}
     {
 
     }
 
 	~Splat3D() {}
 
-    void Draw(Renderer r)
+    void Draw(Renderer& r)
     {
         mShader.Bind();
 
@@ -185,7 +186,7 @@ public:
         glm::mat3 V
         {
             50.0, 0.0, 0.0,
-            0.0, 50.0, 0.0,
+            0.0, 0.1, 0.0,
             0.0, 0.0, 50.0
         };
 
@@ -249,6 +250,19 @@ public:
         //mShader.SetUniformMat4f("uViewProj", mCam.GetProjMatrix());
 
         mBillboard.Render(r);
+
+        glm::vec3 lv0(0.0, 0.0, 0.0);
+        glm::vec3 lv1(V[0]);
+        glm::vec3 lv2(V[1]);
+        glm::vec3 lv3(V[2]);
+        mLineShader.Bind();
+        mLineShader.SetUniformMat4f("uViewProj", mCam.GetViewProjMatrix());
+        mLineShader.SetUniform4f("uColor", glm::vec4{1.0, 0.0, 0.0, 1.0});
+        r.DrawLine(lv0, lv1);
+        mLineShader.SetUniform4f("uColor", glm::vec4{0.0, 1.0, 0.0, 1.0});
+        r.DrawLine(lv0, lv2);
+        mLineShader.SetUniform4f("uColor", glm::vec4{0.0, 0.0, 1.0, 1.0});
+        r.DrawLine(lv0, lv3);
     }
 
     void SetLambas(float l0, float l1, float l2)
@@ -293,7 +307,8 @@ private:
     glm::vec4 mColor;
     glm::quat mQuat;
     glm::vec4 mPosition;
-    Shader &mShader;
+    Shader& mShader;
+    Shader &mLineShader;
     Camera& mCam;
     Geometry::Billboard mBillboard;
     std::string splatdata;
@@ -305,7 +320,7 @@ class Splat2D
 public:
     Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader &renderShader, glm::vec4 color) :
         mPosition(pos),
-        mBillboard(Geometry::Billboard(pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f))),
+        mBillboard{ pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f) },
         mVertFragShader(renderShader),
         mSigma(glm::mat2(0.0f)),
         ml0{sqrtf(l0)},

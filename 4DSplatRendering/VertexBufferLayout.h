@@ -33,6 +33,7 @@ private:
 	unsigned int m_Stride;
 
 public:
+	VertexBufferLayout(VertexBufferLayout&) = delete;
 	VertexBufferLayout() : m_Stride(0)
 	{}
 

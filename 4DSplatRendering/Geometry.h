@@ -202,4 +202,5 @@ namespace Geometry
         VertexBuffer mVertexBuffer;
         glm::mat4 mTransform;
     };
+
 }
