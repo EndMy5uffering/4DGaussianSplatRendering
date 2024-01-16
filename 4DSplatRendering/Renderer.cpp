@@ -30,8 +30,12 @@ void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib) const
     GLCall(glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
 }
 
-void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1) const
+void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam)
 {
+    mLine3D.Bind();
+    mLine3D.SetUniformMat4f("uViewProj", cam.GetViewProjMatrix());
+    mLine3D.SetUniform4f("uColor", color);
+
     float vertBuff[6] = {
         v0.x, v0.y, v0.z,
         v1.x, v1.y, v1.z
@@ -52,11 +56,49 @@ void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1) const
         0,                  
         3,                  // size
         GL_FLOAT,           // type
-        GL_FALSE,           // normalized?
+        GL_FALSE,           // normalized
         0,                  // stride
         (void*)0            // array buffer offset
     ));
 
+    GLCall(glLineWidth(3.0f));
+    GLCall(glDrawArrays(GL_LINES, 0, 2));
+
+    glDeleteBuffers(1, &vertexbuffer);
+    glDeleteVertexArrays(1, &array);
+}
+
+void Renderer::DrawLine(glm::vec2 v0, glm::vec2 v1, glm::vec4 color)
+{
+    mLine2D.Bind();
+    mLine2D.SetUniform4f("uColor", color);
+
+    float vertBuff[4] = {
+        v0.x, v0.y,
+        v1.x, v1.y
+    };
+
+    GLuint vertexbuffer;
+    GLCall(glGenBuffers(1, &vertexbuffer));
+    GLCall(glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer));
+    GLCall(glBufferData(GL_ARRAY_BUFFER, sizeof(vertBuff), vertBuff, GL_STATIC_DRAW));
+
+    GLuint array;
+    glGenVertexArrays(1, &array);
+    glBindVertexArray(array);
+
+
+    GLCall(glEnableVertexAttribArray(0));
+    GLCall(glVertexAttribPointer(
+        0,
+        2,                  // size
+        GL_FLOAT,           // type
+        GL_FALSE,           // normalized
+        0,                  // stride
+        (void*)0            // array buffer offset
+    ));
+
+    GLCall(glLineWidth(3.0f));
     GLCall(glDrawArrays(GL_LINES, 0, 2));
 
     glDeleteBuffers(1, &vertexbuffer);

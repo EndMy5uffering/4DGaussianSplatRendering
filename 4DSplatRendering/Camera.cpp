@@ -87,6 +87,11 @@ float Camera::GetScreenHeight()
 	return this->mHeight;
 }
 
+glm::vec2 Camera::GetViewport()
+{
+	return glm::normalize(glm::vec2(mWidth, mHeight));
+}
+
 void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 {
 

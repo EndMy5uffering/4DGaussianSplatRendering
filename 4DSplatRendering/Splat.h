@@ -43,12 +43,24 @@ namespace SplatUtils
         return glm::vec2{l0, l1};
     }
 
-    static glm::vec2 GetEigenVector2x2(const glm::mat2 &mat, float ev) 
+    static glm::mat2 GetEigenVectors2x2(const glm::mat2 &mat, glm::vec2 eigenValues) 
     {
-        float offdiag = mat[0][1] + 0.01f;
-        glm::vec2 eigenVec{1, (ev - mat[0][0]) / offdiag};
-        eigenVec = glm::normalize(eigenVec);
-        return eigenVec;
+        float offdiag = mat[0][1];
+        if (offdiag == 0) 
+        {
+            return glm::mat2{
+                glm::normalize(mat[0] / eigenValues[0]), 
+                glm::normalize(mat[1] / eigenValues[1])
+            };
+        }
+        glm::vec2 eigenVec0 = glm::normalize(glm::vec2{ 1, (eigenValues[0] - mat[0][0]) / offdiag });
+        glm::vec2 eigenVec1 = glm::normalize(glm::vec2{ eigenVec0.y, -eigenVec0.x});
+
+        float dot = ((eigenVec0.x * eigenVec1.x) + (eigenVec0.y * eigenVec1.y));
+
+        //ASSERT(dot > -0.0000001f && dot < 0.0000001f)
+
+        return { glm::normalize(eigenVec0), glm::normalize(eigenVec1) };
     }
 
     static glm::vec3 Swap(const glm::vec3 v, int from, int to)
@@ -140,7 +152,7 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, Shader& lineShader, glm::vec4 color, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, glm::vec4 color, Camera& cam) : 
         mPosition(pos),
         mQuat{quaternion},
         ml0{l0},
@@ -148,8 +160,7 @@ public:
         ml2{l2},
         mShader{shader},
         mColor{color},
-        mCam{cam},
-        mLineShader{lineShader}
+        mCam{cam}
     {
 
     }
@@ -161,13 +172,13 @@ public:
         mShader.Bind();
 
         glm::mat4 view = mCam.GetViewMatrix();
-        glm::mat3 view3
+        glm::mat3 W
         {
-            view[0][0], view[0][1], view[0][2],
-            view[1][0], view[1][1], view[1][2],
-            view[2][0], view[2][1], view[2][2],
+            glm::vec3(view[0]),
+            glm::vec3(view[1]),
+            glm::vec3(view[2]),
         };
-        view3 = glm::transpose(view3);
+        W = glm::transpose(W);
 
         glm::vec4 posCamSpace = view * mPosition;
         glm::vec4 posScreenSpace = mCam.GetProjMatrix() * posCamSpace;
@@ -186,30 +197,27 @@ public:
         glm::mat3 V
         {
             50.0, 0.0, 0.0,
-            0.0, 0.1, 0.0,
+            0.0, 50.0, 0.0,
             0.0, 0.0, 50.0
         };
 
-        glm::mat3 T = view3 * J;
+        glm::mat3 T = W * J;
 
         glm::mat3 cov3 = glm::transpose(T) * V * T;
-        glm::mat3 upper = SplatUtils::GetUpperMat2(cov3);
+        glm::mat2 upper = SplatUtils::GetUpperMat2(cov3);
         
         glm::vec2 lambdas = SplatUtils::GetEigenValues2x2(upper);
 
         float l0 = sqrt(lambdas.x);
         float l1 = sqrt(lambdas.y);
 
-        glm::vec2 diagonalVector = glm::normalize(glm::vec2(upper[0][1], l0 - upper[0][0] + 0.3));
+        glm::mat2 eigenVecs = SplatUtils::GetEigenVectors2x2(upper, lambdas);
 
-        glm::vec2 v0 = diagonalVector;
-        glm::vec2 v1{v0.y, -v0.x};
+        glm::vec2 v0 = glm::normalize(eigenVecs[0] / mCam.GetViewport());
+        glm::vec2 v1 = glm::normalize(eigenVecs[1] / mCam.GetViewport());
         glm::mat2 R{v0, v1};
         glm::mat2 S{l0, 0.0f, 0.0f, l1};
         glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
-
-        //TODO: calculate from top 2x2 mat of cov3
-        //see: https://github.com/KeKsBoTer/web-splat/blob/master/src/shaders/preprocess.wgsl
 
         std::stringstream ss;
         ss << Utils::V4ToStr("SplatPos", mPosition) << "\n";
@@ -252,17 +260,18 @@ public:
         mBillboard.Render(r);
 
         glm::vec3 lv0(0.0, 0.0, 0.0);
-        glm::vec3 lv1(V[0]);
-        glm::vec3 lv2(V[1]);
-        glm::vec3 lv3(V[2]);
-        mLineShader.Bind();
-        mLineShader.SetUniformMat4f("uViewProj", mCam.GetViewProjMatrix());
-        mLineShader.SetUniform4f("uColor", glm::vec4{1.0, 0.0, 0.0, 1.0});
-        r.DrawLine(lv0, lv1);
-        mLineShader.SetUniform4f("uColor", glm::vec4{0.0, 1.0, 0.0, 1.0});
-        r.DrawLine(lv0, lv2);
-        mLineShader.SetUniform4f("uColor", glm::vec4{0.0, 0.0, 1.0, 1.0});
-        r.DrawLine(lv0, lv3);
+        glm::vec3 lv1(V[0] * 0.5f);
+        glm::vec3 lv2(V[1] * 0.5f);
+        glm::vec3 lv3(V[2] * 0.5f);
+        r.DrawLine(lv0, lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, mCam);
+        r.DrawLine(lv0, lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, mCam);
+        r.DrawLine(lv0, lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, mCam);
+        glm::vec2 screenPos(0.0, 0.0);
+        r.DrawLine(screenPos, screenPos + (v0 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
+        r.DrawLine(screenPos, screenPos + (v0 * lambdas.x), glm::vec4{1.0, 0.0, 1.0, 1.0});
+        r.DrawLine(screenPos, screenPos + (v1 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
+        r.DrawLine(screenPos, screenPos + (v1 * lambdas.y), glm::vec4{0.0, 1.0, 1.0, 1.0});
+
     }
 
     void SetLambas(float l0, float l1, float l2)
@@ -308,7 +317,6 @@ private:
     glm::quat mQuat;
     glm::vec4 mPosition;
     Shader& mShader;
-    Shader &mLineShader;
     Camera& mCam;
     Geometry::Billboard mBillboard;
     std::string splatdata;
@@ -342,7 +350,7 @@ public:
         mSigma = glm::inverse(sig);
     }
 
-    void Draw(Renderer r, Camera c) 
+    void Draw(Renderer& r, Camera c) 
     { 
         mVertFragShader.Bind();
         mVertFragShader.SetUniform4f("uColor", mColor.r, mColor.g, mColor.b, 1.0);

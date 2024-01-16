@@ -37,8 +37,8 @@
 #include "Utils.h"
 
 
-int SCREEN_WIDTH = 980;
-int SCREEN_HEIGHT = 680;
+int SCREEN_WIDTH = 800;
+int SCREEN_HEIGHT = 800;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
 
 float frand(float from, float to)
@@ -81,7 +81,8 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 4);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_MAXIMIZED, 1);
+    //glfwWindowHint(GLFW_MAXIMIZED, 1);
+    //glfwWindowHint(GLFW_SAMPLES, 16);
 
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "4D Gaussian Splats", NULL, NULL);
@@ -101,7 +102,6 @@ int main(void)
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     glfwSetWindowSizeCallback(window, updateScreenSize);
-
     //IMGUI
 
     IMGUI_CHECKVERSION();
@@ -152,11 +152,6 @@ int main(void)
     SplatRenderShader3D.AddShaderSource("../Shader/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader3D.BuildShader();
 
-    Shader lineShader;
-    lineShader.AddShaderSource("../Shader/LineFrag.GLSL", GL_FRAGMENT_SHADER);
-    lineShader.AddShaderSource("../Shader/LineVert.GLSL", GL_VERTEX_SHADER);
-    lineShader.BuildShader();
-
     Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f, 1.0f});
 
     Splat3D s3d(
@@ -164,7 +159,6 @@ int main(void)
         glm::quatLookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{0.0f, 1.0f, 0.0f}), 
         5.0f, 1.0f, 5.0f, 
         SplatRenderShader3D,
-        lineShader,
         glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
         cam
     );
@@ -234,12 +228,6 @@ int main(void)
 
         s3d.Draw(renderer);
 
-        /*lineShader.Bind();
-        lineShader.SetUniformMat4f("uViewProj", cam.GetViewProjMatrix());
-        glm::vec3 lv0{0.0, 0.0, 0.0};
-        glm::vec3 lv1{100.0, 0.0, 0.0};
-        renderer.DrawLine(lv0, lv1);*/
-
 
         std::sort(splats.begin(), splats.end(), [](Splat2D *a, Splat2D *b) {
             float aDist = glm::length((a->GetPosition() - cam.GetPosition()));
@@ -274,8 +262,6 @@ int main(void)
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-
 
         /* Swap front and back buffers */
         GLCall(glfwSwapBuffers(window));

@@ -31,6 +31,7 @@ public:
 	float GetFOV();
 	float GetScreenWidth();
 	float GetScreenHeight();
+	glm::vec2 GetViewport();
 
 	void HandleInput(GLFWwindow *window, bool imguiActive = false);
 	void SetWidth(int width) { this->mWidth = width; }
