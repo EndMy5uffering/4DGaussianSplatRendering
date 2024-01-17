@@ -2,6 +2,7 @@
 
 #include <glm/glm.hpp>
 #include <glm/gtc/quaternion.hpp>
+#include <glm/common.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <glm/gtx/matrix_operation.hpp>
 #include "Shader.h"
@@ -29,18 +30,13 @@ namespace SplatUtils
 
     static glm::vec2 GetEigenValues2x2(glm::mat2 mat) 
     {
-        float d = mat[0][0], e = mat[0][1];
-        float f = mat[1][0], g = mat[1][1];
+        //https://www.youtube.com/watch?v=e50Bj7jn9IQ
 
-        float b = -(d + g);
-        float c = ((d * g) - (f * e));
+        float m = (mat[0][0] + mat[1][1]) * 0.5f;
+        float p = (mat[0][0] * mat[1][1]) - (mat[0][1] * mat[1][0]);
+        float d = sqrt((m * m) - p);
 
-        float sqrtTearm = sqrt((b * b) - (4.0f * c)) / 2.0f;
-        float nb = -b / 2.0f;
-        float l0 = nb + sqrtTearm;
-        float l1 = nb - sqrtTearm;
-
-        return glm::vec2{l0, l1};
+        return glm::vec2{m + d, m - d};
     }
 
     static glm::mat2 GetEigenVectors2x2(const glm::mat2 &mat, glm::vec2 eigenValues) 
@@ -152,12 +148,10 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat quaternion, float l0, float l1, float l2, Shader& shader, glm::vec4 color, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, Shader& shader, glm::vec4 color, Camera& cam) : 
         mPosition(pos),
-        mQuat{quaternion},
-        ml0{l0},
-        ml1{l1},
-        ml2{l2},
+        mRot{ rot },
+        mScale{ scale },
         mShader{shader},
         mColor{color},
         mCam{cam}
@@ -194,12 +188,9 @@ public:
             0.0f,                 0.0f,                 0.0f
         };
 
-        glm::mat3 V
-        {
-            50.0, 0.0, 0.0,
-            0.0, 50.0, 0.0,
-            0.0, 0.0, 50.0
-        };
+        glm::mat3 tscale = glm::diagonal3x3(mScale);
+        glm::mat3 trot = glm::toMat3(mRot);
+        glm::mat3 V = trot * tscale * tscale * glm::transpose(trot);
 
         glm::mat3 T = W * J;
 
@@ -219,29 +210,6 @@ public:
         glm::mat2 S{l0, 0.0f, 0.0f, l1};
         glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
 
-        std::stringstream ss;
-        ss << Utils::V4ToStr("SplatPos", mPosition) << "\n";
-        ss << Utils::V4ToStr("Cam_space_Pos", posCamSpace) << "\n";
-        ss << Utils::V4ToStr("Screen_Space_Pos", posScreenSpace) << "\n";
-        ss << Utils::Mat4ToStr("View", view) << "\n";
-        ss << Utils::Mat3ToStr("J", J) << "\n";
-        ss << Utils::Mat3ToStr("T = J * view3", T) << "\n";
-        ss << Utils::Mat3ToStr("cov3 = glm::transpose(T) * V * T", cov3) << "\n";
-        ss << Utils::Mat2ToStr("upper", upper) << "\n";
-        ss << "\n";
-        ss << "Matrix structure:\n";
-        ss << "-------\n";
-        ss << "| d e |\n";
-        ss << "| f g |\n";
-        ss << "-------\n";
-        ss << "\n";
-        ss << "l0: " << l0 << "\n\n";
-        ss << "l1: " << l1 << "\n\n";
-        ss << Utils::V2ToStr("V0", v0) << "\n";
-        ss << Utils::V2ToStr("V1", v1) << "\n";
-        ss << Utils::Mat2ToStr("Sig", Sig) << "\n";
-        this->splatdata = ss.str();
-
         float z = posScreenSpace.z / posScreenSpace.w;
         float bound = 1.2 * posScreenSpace.w;
         if (z < 0. || z > 1. || posScreenSpace.x < -bound || posScreenSpace.x > bound || posScreenSpace.y < -bound || posScreenSpace.y > bound) 
@@ -250,45 +218,50 @@ public:
         }
 
         mShader.SetUniformMat2f("uSigma", Sig);
-        mShader.SetUniform2f("uScale", l0, l1);
+        mShader.SetUniform2f("uScale", glm::vec2(l0, l1));
         mShader.SetUniform2f("uVec1", v0);
         mShader.SetUniform2f("uVec2", v1);
         mShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
         mShader.SetUniformMat4f("uProj", mCam.GetProjMatrix());
-        //mShader.SetUniformMat4f("uViewProj", mCam.GetProjMatrix());
+        mShader.SetUniform4f("uColor", mColor);
 
         mBillboard.Render(r);
 
-        glm::vec3 lv0(0.0, 0.0, 0.0);
-        glm::vec3 lv1(V[0] * 0.5f);
-        glm::vec3 lv2(V[1] * 0.5f);
-        glm::vec3 lv3(V[2] * 0.5f);
-        r.DrawLine(lv0, lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, mCam);
-        r.DrawLine(lv0, lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, mCam);
-        r.DrawLine(lv0, lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, mCam);
+        glm::vec3 lv0(mPosition.x, mPosition.y, mPosition.z);
+        glm::vec3 lv1(trot[0] * mScale[0]);
+        glm::vec3 lv2(trot[1] * mScale[1]);
+        glm::vec3 lv3(trot[2] * mScale[2]);
+        r.DrawLine(lv0, lv0 + lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, mCam);
+        r.DrawLine(lv0, lv0 + lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, mCam);
+        r.DrawLine(lv0, lv0 + lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, mCam);
+        /*
         glm::vec2 screenPos(0.0, 0.0);
         r.DrawLine(screenPos, screenPos + (v0 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
         r.DrawLine(screenPos, screenPos + (v0 * lambdas.x), glm::vec4{1.0, 0.0, 1.0, 1.0});
         r.DrawLine(screenPos, screenPos + (v1 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
         r.DrawLine(screenPos, screenPos + (v1 * lambdas.y), glm::vec4{0.0, 1.0, 1.0, 1.0});
+        */
 
     }
 
     void SetLambas(float l0, float l1, float l2)
     {
-        this->ml0 = l0;
-        this->ml1 = l1;
-        this->ml2 = l2;
+        this->mScale = {l0, l1, l2};
     }
 
-    glm::mat4 GetProjMat() 
+    void SetQuaternion(glm::quat rot)
     {
-        return glm::perspective(glm::radians(mCam.GetFOV()), (mCam.GetScreenWidth() / mCam.GetScreenHeight()), 1.0f, mCam.GetFar());
+        this->mRot = rot;
     }
 
-    void SetQuaternion(glm::quat quat)
+    glm::quat GetQuaternion() 
     {
-        this->mQuat = quat;
+        return this->mRot;
+    }
+
+    glm::vec3 GetScale() 
+    {
+        return this->mScale;
     }
 
     void SetPosition(glm::vec4 pos)
@@ -296,7 +269,7 @@ public:
         this->mPosition = pos;
     }
 
-    glm::vec3 GetPosition()
+    glm::vec4 GetPosition()
     {
         return mPosition;
     }
@@ -306,20 +279,19 @@ public:
         this->mColor = color;
     }
 
-    std::string GetSplatData() 
+    glm::vec4 GetColor() 
     {
-        return this->splatdata;
+        return this->mColor;
     }
 
 private:
-    float ml0, ml1, ml2;
+    glm::vec3 mScale;
     glm::vec4 mColor;
-    glm::quat mQuat;
+    glm::quat mRot;
     glm::vec4 mPosition;
     Shader& mShader;
     Camera& mCam;
     Geometry::Billboard mBillboard;
-    std::string splatdata;
 };
 
 

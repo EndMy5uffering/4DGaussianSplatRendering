@@ -37,8 +37,8 @@
 #include "Utils.h"
 
 
-int SCREEN_WIDTH = 800;
-int SCREEN_HEIGHT = 800;
+int SCREEN_WIDTH = 900;
+int SCREEN_HEIGHT = 900;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
 
 float frand(float from, float to)
@@ -152,48 +152,29 @@ int main(void)
     SplatRenderShader3D.AddShaderSource("../Shader/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
     SplatRenderShader3D.BuildShader();
 
-    Splat2D s2d({ 0.0f, 0.0f, 0.0f }, { 1.0f , 0.0f }, 4.0f, 2.0f, SplatRenderShader, {0.0f, 0.0f, 0.0f, 1.0f});
-
     Splat3D s3d(
-        glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }, 
-        glm::quatLookAt(glm::vec3{ 0.0f, 0.0f, 0.0f }, glm::vec3{0.0f, 1.0f, 0.0f}), 
-        5.0f, 1.0f, 5.0f, 
+        glm::vec4{ -3.0f, 0.0f, 0.0f, 1.0f }, 
+        glm::quatLookAt(glm::normalize(glm::vec3{ 1.0f, 1.0f, 1.0f }), glm::vec3{0.0f, 1.0f, 0.0f}),
+        glm::vec3{5.0f, 3.0f, 5.0f},
         SplatRenderShader3D,
         glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
         cam
     );
-
-    size_t numOfSplats = 100;
-    std::vector<Splat2D*> splats;
-    splats.reserve(numOfSplats);
-
-    float from = -50;
-    float to = 50;
-    for(size_t i = 0; i < numOfSplats; ++i)
-    {
-        Splat2D* s = new Splat2D({ 100 + frand(from, to), frand(from, to), frand(from, to) },
-            getVecFromAngle(frand(0, 360.0f)),
-            frand(0.5f, 10.0f),
-            frand(0.5f, 10.0f),
-            SplatRenderShader,
-            { frand(0.0f, 1.0f), frand(0.0f, 1.0f) , frand(0.0f, 1.0f), frand(0.1f, 1.0f) });
-        splats.push_back(s);
-    }
-
 
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
-    DebugMenus::Splat2DMenuData menuData;
-    menuData.angle = 0.0f;
-    menuData.l0 = 4.0f;
-    menuData.l1 = 2.0f;
-
     DebugMenus::Menu02Data menu2Data;
     menu2Data.buffer = "This could be your shader :D";
     menu2Data.shaders.push_back(&SplatRenderShader);
+
+    DebugMenus::Splat3DMenuData splat3DMenuData;
+    splat3DMenuData.rot = glm::vec3{ 1.0f, 1.0f, 1.0f };
+    splat3DMenuData.pos = s3d.GetPosition();
+    splat3DMenuData.lambdas = s3d.GetScale();
+    splat3DMenuData.color = s3d.GetColor();
 
     DebugMenus::BlendOpt blendOpt;
     blendOpt.selected0 = GL_SRC_ALPHA;
@@ -219,45 +200,37 @@ int main(void)
         glDisable(GL_DEPTH_TEST);
         //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
-        s2d.SetLambas(menuData.l0, menuData.l1);
-        float ang = menuData.angle * PI / 180.0f;
-        s2d.SetVectors({ cos(ang), sin(ang) });
-        s2d.SetColor({ menuData.color[0], menuData.color[1], menuData.color[2], menuData.color[3] });
-        s2d.SetPosition(menuData.splatPos);
-        //s2d.Draw(renderer, cam);
+
+        s3d.SetPosition(splat3DMenuData.pos);
+        s3d.SetLambas(splat3DMenuData.lambdas.x, splat3DMenuData.lambdas.y, splat3DMenuData.lambdas.z);
+        s3d.SetQuaternion(glm::quatLookAt(glm::normalize(splat3DMenuData.rot), glm::vec3{0.0f, 1.0f, 0.0f}));
+        s3d.SetColor(splat3DMenuData.color);
 
         s3d.Draw(renderer);
 
-
-        std::sort(splats.begin(), splats.end(), [](Splat2D *a, Splat2D *b) {
-            float aDist = glm::length((a->GetPosition() - cam.GetPosition()));
-            float bDist = glm::length((b->GetPosition() - cam.GetPosition()));
-            return aDist > bDist;
-        });
-
-        for (size_t i = 0; i < splats.size(); ++i)
-        {
-            splats[i]->Draw(renderer, cam);
-        }
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
+
+        glm::vec3 lv0{0, 0, 0};
+        glm::vec3 lv1{10000, 0, 0};
+        glm::vec3 lv2{0, 10000, 0};
+        glm::vec3 lv3{0, 0, 10000};
+        renderer.DrawLine(lv0, lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, cam);
+        renderer.DrawLine(lv0, lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, cam);
+        renderer.DrawLine(lv0, lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, cam);
 
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplGlfw_NewFrame();
         ImGui::NewFrame();
 
-        DebugMenus::Splat2DMenu(&menuData, &menueStripData.show_2DSplat);
         DebugMenus::ShaderEditor(&menu2Data, &menueStripData.show_ShaderEditor);
         DebugMenus::BlendOptMenu(&blendOpt, &menueStripData.show_BlendOpt);
         std::string val = getTextInfo(cam);
         DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
 
-        std::string splatInfo = s3d.GetSplatData();
-        DebugMenus::TextScreen("Splat Info:", splatInfo);
-
-        //DebugMenu::Splat3DMenu();
+        DebugMenus::Splat3DMenu(&splat3DMenuData, &menueStripData.show_3DSplat);
         //IMGUI
 
         ImGui::Render();
@@ -271,12 +244,6 @@ int main(void)
         cam.HandleInput(window, ImGui::IsAnyItemActive());
 
     }
-
-    for (size_t i = 0; i < splats.size(); ++i) 
-    {
-        delete splats[i];
-    }
-
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();

@@ -38,13 +38,10 @@ namespace DebugMenus
     };
 
     struct Splat3DMenuData {
-        glm::vec3 v0{0.0f};
-        glm::vec3 v1{0.0f};
-        float l0 = 0.0f;
-        float l1 = 0.0f;
-        float l2 = 0.0f;
-        glm::vec3 splatPos{0.0, 0.0, 0.0};
-        float color[4] = { 0.0f, 0.0f, 0.0f, 1.0f };
+        glm::vec3 rot{0.0f};
+        glm::vec4 pos{0.0f};
+        glm::vec3 lambdas{0.0f};
+        glm::vec4 color = { 0.0f, 0.0f, 0.0f, 1.0f };
     };
 
     struct Menu02Data {
@@ -77,6 +74,7 @@ namespace DebugMenus
 
     struct MenueStripData {
         bool show_2DSplat = false;
+        bool show_3DSplat = false;
         bool show_CamInfo = false;
         bool show_BlendOpt = false; 
         bool show_ShaderEditor = false;
@@ -128,27 +126,44 @@ namespace DebugMenus
 
         ImGui::Begin("3D Splats", is_Showing);
 
-        float x0 = data->v0.x, x1 = data->v0.y, x2 = data->v0.z,
-            y0 = data->v1.x, y1 = data->v1.y, y2 = data->v1.z;
-        ImGui::SliderFloat("x0", &x0, -180.0f, 180.0f);
-        ImGui::SliderFloat("x1", &x1, -180.0f, 180.0f);
-        ImGui::SliderFloat("x2", &x2, -180.0f, 180.0f);
-        ImGui::SliderFloat("y0", &y0, -180.0f, 180.0f);
-        ImGui::SliderFloat("y1", &y1, -180.0f, 180.0f);
-        ImGui::SliderFloat("y2", &y2, -180.0f, 180.0f);
-        ImGui::SliderFloat("l0", &(data->l0), 0.0f, 10.0f);
-        ImGui::SliderFloat("l1", &(data->l1), 0.0f, 10.0f);
-        ImGui::SliderFloat("l2", &(data->l2), 0.0f, 10.0f);
+        float x0 = data->rot.x, x1 = data->rot.y, x2 = data->rot.z,
+            y0 = data->pos.x, y1 = data->pos.y, y2 = data->pos.z;
+        ImGui::SliderFloat("x0", &x0, -1.0f, 1.0f);
+        ImGui::SliderFloat("x1", &x1, -1.0f, 1.0f);
+        ImGui::SliderFloat("x2", &x2, -1.0f, 1.0f);
+        ImGui::SliderFloat("l0", &(data->lambdas[0]), 0.0f, 100.0f);
+        ImGui::SliderFloat("l1", &(data->lambdas[1]), 0.0f, 100.0f);
+        ImGui::SliderFloat("l2", &(data->lambdas[2]), 0.0f, 100.0f);
+        ImGui::SliderFloat("pos_0", &y0, -250.0f, 250.0f);
+        ImGui::SliderFloat("pos_1", &y1, -250.0f, 250.0f);
+        ImGui::SliderFloat("pos_2", &y2, -250.0f, 250.0f);
 
-        float x = data->splatPos.x, y = data->splatPos.y, z = data->splatPos.z;
-        ImGui::SliderFloat("Pos_X", &x, -10.0f, 10.0f);
-        ImGui::SliderFloat("Pos_Y", &y, -10.0f, 10.0f);
-        ImGui::SliderFloat("Pos_Z", &z, -10.0f, 10.0f);
+        data->rot = { x0, x1, x2 };
+        data->pos = { y0, y1, y2, 1.0f };
 
-        data->splatPos = glm::vec3{ x,y,z };
+        float c[] = {
+            data->color.r,
+            data->color.g,
+            data->color.b,
+            data->color.a
+        };
+        ImGui::ColorEdit4("Splat Color", c, ImGuiColorEditFlags_AlphaBar);
+        data->color = { c[0], c[1], c[2], c[3] };
 
-        ImGui::ColorEdit4("Splat Color", (data->color), ImGuiColorEditFlags_AlphaBar);
+        if (ImGui::Button("Reset Pos")) 
+        {
+            data->pos = { 0.0, 0.0, 0.0, 1.0 };
+        }
 
+        if (ImGui::Button("Reset Rot"))
+        {
+            data->rot = {0.0, 0.0, -1.0};
+        }
+
+        if (ImGui::Button("Reset Lambdas"))
+        {
+            data->lambdas = { 1.0, 1.0, 1.0 };
+        }
 
         ImGui::End();
     }
@@ -283,8 +298,8 @@ namespace DebugMenus
             if (ImGui::BeginMenu("Splats"))
             {
                 if (ImGui::Button("Splat 2D Menu")) data->show_2DSplat = !data->show_2DSplat;
-                if (ImGui::Button("Splat 3D Menu")) {}
-                if (ImGui::Button("Splat 3D Menu")) {}
+                if (ImGui::Button("Splat 3D Menu")) data->show_3DSplat = !data->show_3DSplat;
+                if (ImGui::Button("Splat 4D Menu")) {}
                 ImGui::EndMenu();
             }
             if (ImGui::Button("Blend functions")) data->show_BlendOpt = !data->show_BlendOpt;

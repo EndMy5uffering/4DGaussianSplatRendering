@@ -13,29 +13,22 @@ uniform mat4 uProj;
 out vec4 FragPos;
 
 mat4 mScale = mat4(
-     uScale.x * 20.0,      0.0, 0.0, 0.0,
-         0.0,  uScale.y * 20.0, 0.0, 0.0,
+     uScale.x * 3,      0.0, 0.0, 0.0,
+         0.0,  uScale.y * 3, 0.0, 0.0,
          0.0,      0.0, 1.0, 0.0,
          0.0,      0.0, 0.0, 1.0
 );
 
 mat4 mRot = mat4(
-    uVec1.x, uVec1.y, 0.0, 0.0,
-    uVec2.x, uVec2.y, 0.0, 0.0,
+    uVec1.x, uVec2.x, 0.0, 0.0,
+    uVec1.y, uVec2.y, 0.0, 0.0,
     0.0, 0.0, 1.0, 0.0,
     0.0, 0.0, 0.0, 1.0
 );
 
-mat4 offset = mat4(
-    0.1, 0.0, 0.0, 0.0,
-    0.0, 0.1, 0.0, 0.0,
-    0.0, 0.0, 0.1, 0.0,
-    0.0, 0.0, -1.0, 1.0
-);
-
 void main()
 {
-    gl_Position = uProj * offset * mScale * mRot * inPos;
+    gl_Position = mRot * mScale * inPos;
     FragPos = gl_Position;
     gl_Position = gl_Position + vec4(uScreenPos.x, uScreenPos.y, 0.0f, 0.0f);
 }
