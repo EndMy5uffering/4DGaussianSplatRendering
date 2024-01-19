@@ -36,7 +36,7 @@ namespace SplatUtils
         float p = (mat[0][0] * mat[1][1]) - (mat[0][1] * mat[1][0]);
         float d = sqrt((m * m) - p);
 
-        return glm::vec2{m + d, m - d};
+        return glm::vec2{maxf(m + d, 0.00001f), maxf(m - d, 0.00001f)};
     }
 
     static glm::mat2 GetEigenVectors2x2(const glm::mat2 &mat, glm::vec2 eigenValues) 
@@ -79,6 +79,15 @@ namespace SplatUtils
         mc[to] = temp;
 
         return mc;
+    }
+
+    static glm::mat3 vecToMat(glm::vec3 &v0, glm::vec3 &v1) {
+        return glm::mat3
+        {
+            v0[0] * v1,
+            v0[1] * v1,
+            v0[2] * v1
+        };
     }
 
     static glm::vec3 SolveSystem3x3(const glm::mat3& a, const glm::vec3& b)
@@ -133,39 +142,219 @@ namespace SplatUtils
 class Splat4D
 {
 public:
-    Splat4D(glm::vec3 pos, glm::vec4 v0, glm::vec4 v1, glm::vec4 v2, glm::vec4 v3, float l0, float l1, float l2, float l3) : mPosition(pos)
+    Splat4D(glm::vec4 pos, glm::quat rot0, glm::quat rot1, glm::vec4 scalar, glm::vec4 color) :
+        mPosition(pos),
+        mRot0{ rot0 },
+        mRot1{ rot1 },
+        mColor{ color },
+        mScale{ scalar },
+        mTimePos{ 0.0f }
     {
 
     }
 
     ~Splat4D() {}
 
+    void Draw(Renderer& renderer, Shader& splatShader, Camera& cam) 
+    {
+
+        float a = mRot0.x, b = mRot0.y, c = mRot0.z, d = mRot0.w;
+        float p = mRot1.x, q = mRot1.y, r = mRot1.z, s = mRot1.w;
+        glm::mat4 mRl
+        {
+            a, -b, -c, -d,
+                b, a, -d, c,
+                c, d, a, -b,
+                d, -c, b, a
+        };
+
+        glm::mat4 mRr
+        {
+            p, -q, -r, -s,
+                q, p, s, -r,
+                r, -s, p, q,
+                s, r, -q, p
+        };
+
+        mR = mRl * mRr;
+
+        glm::mat4 sig = mR * glm::diagonal4x4(mScale) * glm::diagonal4x4(mScale) * glm::transpose(mR);
+
+        glm::vec3 sig1_3_4{sig[0][3], sig[1][3], sig[2][3]};
+        glm::vec3 sig4_1_3{sig[3][0], sig[3][1], sig[3][2]};
+
+        glm::vec3 splatPos = glm::vec3{ mPosition.x, mPosition.y, mPosition.z } + (sig1_3_4 * (1.0f / sig[3][3]) * (mTime - mScale[3]));
+        mTimePos = splatPos;
+        glm::vec3 tvec = (1.0f / sig[3][3]) * sig4_1_3;
+        glm::mat3 subPart = SplatUtils::vecToMat(sig1_3_4 , tvec);
+        glm::mat3 sig3x3
+        {
+            sig[0][0] - subPart[0][0], sig[0][1] - subPart[0][1], sig[0][2] - subPart[0][2],
+            sig[1][0] - subPart[1][0], sig[1][1] - subPart[1][1], sig[1][2] - subPart[1][2],
+            sig[2][0] - subPart[1][0], sig[2][1] - subPart[1][1], sig[2][2] - subPart[2][2]
+        };
+
+        glm::mat4 view = cam.GetViewMatrix();
+        glm::mat3 W
+        {
+            glm::vec3(view[0]),
+                glm::vec3(view[1]),
+                glm::vec3(view[2]),
+        };
+        W = glm::transpose(W);
+
+        glm::vec4 posCamSpace = view * glm::vec4{splatPos, 1.0};
+        glm::vec4 posScreenSpace = cam.GetProjMatrix() * posCamSpace;
+        posScreenSpace = posScreenSpace * (1.0f / posScreenSpace.w);
+
+        float z2 = posCamSpace.z * posCamSpace.z;
+
+        glm::vec2 focal = cam.GetFocal();
+
+        glm::mat3 J
+        {
+            1.0f / posCamSpace.z, 0.0, -posCamSpace.x / z2,
+                0.0f, 1.0f / posCamSpace.z, -posCamSpace.y / z2,
+                0.0f, 0.0f, 0.0f
+        };
+
+        glm::mat3 tscale = glm::diagonal3x3(glm::vec3(mScale));
+        glm::mat3 V = sig3x3 * tscale * tscale * glm::transpose(sig3x3);
+
+        glm::mat3 T = W * J;
+
+        glm::mat3 cov3 = glm::transpose(T) * V * T;
+        glm::mat2 upper = SplatUtils::GetUpperMat2(cov3);
+
+        glm::vec2 lambdas = SplatUtils::GetEigenValues2x2(upper);
+        float l0 = sqrt(lambdas.x);
+        float l1 = sqrt(lambdas.y);
+
+        glm::mat2 eigenVecs = SplatUtils::GetEigenVectors2x2(upper, lambdas);
+
+        glm::vec2 v0 = glm::normalize(eigenVecs[0] / cam.GetViewport());
+        glm::vec2 v1 = glm::normalize(eigenVecs[1] / cam.GetViewport());
+        glm::mat2 R{v0, v1};
+        glm::mat2 S{l0, 0.0f, 0.0f, l1};
+        glm::mat2 _Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
+
+        float z = posScreenSpace.z / posScreenSpace.w;
+        float bound = 1.2 * posScreenSpace.w;
+        if (z < 0. || z > 1. || posScreenSpace.x < -bound || posScreenSpace.x > bound || posScreenSpace.y < -bound || posScreenSpace.y > bound)
+        {
+            return;
+        }
+        splatShader.Bind();
+        splatShader.SetUniformMat2f("uSigma", _Sig);
+        splatShader.SetUniform2f("uScale", glm::vec2(l0, l1));
+        splatShader.SetUniform2f("uVec1", v0);
+        splatShader.SetUniform2f("uVec2", v1);
+        splatShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
+        splatShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
+        splatShader.SetUniform4f("uColor", mColor);
+
+        mBillboard.Render(renderer);
+
+    }
+
+    float GetTime()
+    {
+        return this->mTime;
+    }
+
+    void SetTime(float t) 
+    {
+        this->mTime = t;
+    }
+
+    glm::vec4 GetColor() 
+    {
+        return this->mColor;
+    }
+
+    void SetColor(glm::vec4 color) 
+    {
+        this->mColor = color;
+    }
+
+    glm::quat GetQuat0() 
+    {
+        return this->mRot0;
+    }
+
+    void SetQuat0(glm::quat q) 
+    {
+        this->mRot0 = q;
+    }
+
+    glm::quat GetQuat1() 
+    {
+        return this->mRot1;
+    }
+
+    void SetQuat1(glm::quat q) 
+    {
+        this->mRot1 = q;
+    }
+
+    glm::vec4 GetScale() 
+    {
+        return this->mScale;
+    }
+
+    void SetScale(glm::vec4 s) 
+    {
+        this->mScale = s;
+    }
+
+    glm::vec4 GetPosititon() 
+    {
+        return this->mPosition;
+    }
+
+    void SetPosition(glm::vec4 p) 
+    {
+        this->mPosition = p;
+    }
+
+    glm::vec3 GetTimePos() 
+    {
+        return mTimePos;
+    }
+
+    
+
 private:
-    glm::vec3 mPosition;
-    glm::mat4 mSigma;
+    glm::vec4 mScale;
+    glm::vec4 mColor;
+    glm::quat mRot0;
+    glm::quat mRot1;
+    glm::vec4 mPosition;
+    Geometry::Billboard mBillboard;
+    glm::mat4 mR;
+    float mTime = 0.0f;
+    glm::vec3 mTimePos;
 };
 
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, Shader& shader, glm::vec4 color, Camera& cam) : 
+    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color) : 
         mPosition(pos),
         mRot{ rot },
         mScale{ scale },
-        mShader{shader},
-        mColor{color},
-        mCam{cam}
+        mColor{color}
     {
 
     }
 
 	~Splat3D() {}
 
-    void Draw(Renderer& r)
+    void Draw(Renderer& r, Shader& splatShader, Camera& cam)
     {
-        mShader.Bind();
+        splatShader.Bind();
 
-        glm::mat4 view = mCam.GetViewMatrix();
+        glm::mat4 view = cam.GetViewMatrix();
         glm::mat3 W
         {
             glm::vec3(view[0]),
@@ -175,11 +364,13 @@ public:
         W = glm::transpose(W);
 
         glm::vec4 posCamSpace = view * mPosition;
-        glm::vec4 posScreenSpace = mCam.GetProjMatrix() * posCamSpace;
+        glm::vec4 posScreenSpace = cam.GetProjMatrix() * posCamSpace;
 
         posScreenSpace = posScreenSpace * (1.0f / posScreenSpace.w);
 
         float z2 = posCamSpace.z * posCamSpace.z;
+
+        glm::vec2 focal = cam.GetFocal();
 
         glm::mat3 J
         {
@@ -198,14 +389,13 @@ public:
         glm::mat2 upper = SplatUtils::GetUpperMat2(cov3);
         
         glm::vec2 lambdas = SplatUtils::GetEigenValues2x2(upper);
-
         float l0 = sqrt(lambdas.x);
         float l1 = sqrt(lambdas.y);
 
         glm::mat2 eigenVecs = SplatUtils::GetEigenVectors2x2(upper, lambdas);
 
-        glm::vec2 v0 = glm::normalize(eigenVecs[0] / mCam.GetViewport());
-        glm::vec2 v1 = glm::normalize(eigenVecs[1] / mCam.GetViewport());
+        glm::vec2 v0 = glm::normalize(eigenVecs[0] / cam.GetViewport());
+        glm::vec2 v1 = glm::normalize(eigenVecs[1] / cam.GetViewport());
         glm::mat2 R{v0, v1};
         glm::mat2 S{l0, 0.0f, 0.0f, l1};
         glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
@@ -217,13 +407,13 @@ public:
             return;
         }
 
-        mShader.SetUniformMat2f("uSigma", Sig);
-        mShader.SetUniform2f("uScale", glm::vec2(l0, l1));
-        mShader.SetUniform2f("uVec1", v0);
-        mShader.SetUniform2f("uVec2", v1);
-        mShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
-        mShader.SetUniformMat4f("uProj", mCam.GetProjMatrix());
-        mShader.SetUniform4f("uColor", mColor);
+        splatShader.SetUniformMat2f("uSigma", Sig);
+        splatShader.SetUniform2f("uScale", glm::vec2(l0 , l1));
+        splatShader.SetUniform2f("uVec1", v0);
+        splatShader.SetUniform2f("uVec2", v1);
+        splatShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
+        splatShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
+        splatShader.SetUniform4f("uColor", mColor);
 
         mBillboard.Render(r);
 
@@ -231,16 +421,9 @@ public:
         glm::vec3 lv1(trot[0] * mScale[0]);
         glm::vec3 lv2(trot[1] * mScale[1]);
         glm::vec3 lv3(trot[2] * mScale[2]);
-        r.DrawLine(lv0, lv0 + lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, mCam);
-        r.DrawLine(lv0, lv0 + lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, mCam);
-        r.DrawLine(lv0, lv0 + lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, mCam);
-        /*
-        glm::vec2 screenPos(0.0, 0.0);
-        r.DrawLine(screenPos, screenPos + (v0 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
-        r.DrawLine(screenPos, screenPos + (v0 * lambdas.x), glm::vec4{1.0, 0.0, 1.0, 1.0});
-        r.DrawLine(screenPos, screenPos + (v1 * 0.5f), glm::vec4{1.0, 1.0, 1.0, 1.0});
-        r.DrawLine(screenPos, screenPos + (v1 * lambdas.y), glm::vec4{0.0, 1.0, 1.0, 1.0});
-        */
+        r.DrawLine(lv0, lv0 + lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, cam);
+        r.DrawLine(lv0, lv0 + lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, cam);
+        r.DrawLine(lv0, lv0 + lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, cam);
 
     }
 
@@ -289,8 +472,6 @@ private:
     glm::vec4 mColor;
     glm::quat mRot;
     glm::vec4 mPosition;
-    Shader& mShader;
-    Camera& mCam;
     Geometry::Billboard mBillboard;
 };
 

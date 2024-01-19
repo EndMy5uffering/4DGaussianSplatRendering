@@ -14,8 +14,6 @@ public:
 	glm::vec3 orientation{1.0f, 0.0f, 0.0f};
 	glm::vec3 up{0.0f, 1.0f, 0.0f};
 
-
-
 	Camera(int width, int height);
 	Camera(int width, int height, glm::vec3 startPos);
 	Camera(int width, int height, glm::vec3 startPos, glm::vec3 orientation);
@@ -32,6 +30,10 @@ public:
 	float GetScreenWidth();
 	float GetScreenHeight();
 	glm::vec2 GetViewport();
+	glm::vec2 GetFocal();
+	float GetSpeed();
+	bool IsViewFixed();
+	bool IsPositionFixed();
 
 	void HandleInput(GLFWwindow *window, bool imguiActive = false);
 	void SetWidth(int width) { this->mWidth = width; }
@@ -44,6 +46,10 @@ public:
 	void SetPosition(glm::vec3 npos) { this->position = npos; }
 	void SetOrientation(glm::vec3 norientation) { this->orientation = norientation; }
 	void SetUp(glm::vec3 nup) { this->up = nup; }
+	void SetIsViewFixedOnPoint(bool fixed, glm::vec4 point);
+	void SetIsViewFixedOnPoint(bool fixed);
+	void SetIsPositionFixed(bool fixed);
+	void SetSpeed(float speed);
 
 	inline bool IsLockX() { return this->mLockX; }
 	inline bool IsLockY() { return this->mLockY; }
@@ -53,6 +59,8 @@ public:
 private:
 	bool mCaptureMouse = false;
 	bool mFirstCapture = true;
+	bool mFixViewPoint = false;
+	bool mFixPostion = false;
 
 	float mFOV = 60.0f;
 	float mNear = 0.1f;

@@ -32,13 +32,11 @@
 #include "imgui_impl_opengl3.h"
 #include "DebugMenus.h"
 
-#include "Gizmo.h"
-
 #include "Utils.h"
 
 
-int SCREEN_WIDTH = 900;
-int SCREEN_HEIGHT = 900;
+int SCREEN_WIDTH = 1000;
+int SCREEN_HEIGHT = 1000;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
 
 float frand(float from, float to)
@@ -123,7 +121,6 @@ int main(void)
     skyTexture.Bind(2);
     
     Shader shader;
-
     shader.AddShaderSource("../Shader/TemplateFragmentShader.GLSL", GL_FRAGMENT_SHADER);
     shader.AddShaderSource("../Shader/TemplateVertexShader.GLSL", GL_VERTEX_SHADER);
     shader.BuildShader();
@@ -137,11 +134,8 @@ int main(void)
     glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
     cam.SetFar(5000.0f);
 
-    Geometry::Box background(glm::vec3(0.0f), glm::vec3(500.0f));
+    Geometry::Box background(glm::vec3(0.0f), glm::vec3(5000.0f));
 
-    Shader SplatComputeShader;
-    SplatComputeShader.AddShaderSource("../Shader/Splat2DComputeShader.GLSL", GL_COMPUTE_SHADER);
-    SplatComputeShader.BuildShader();
     Shader SplatRenderShader;
     SplatRenderShader.AddShaderSource("../Shader/Splat2DFragShader.GLSL", GL_FRAGMENT_SHADER);
     SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
@@ -153,13 +147,19 @@ int main(void)
     SplatRenderShader3D.BuildShader();
 
     Splat3D s3d(
-        glm::vec4{ -3.0f, 0.0f, 0.0f, 1.0f }, 
-        glm::quatLookAt(glm::normalize(glm::vec3{ 1.0f, 1.0f, 1.0f }), glm::vec3{0.0f, 1.0f, 0.0f}),
-        glm::vec3{5.0f, 3.0f, 5.0f},
-        SplatRenderShader3D,
-        glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
-        cam
+        glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }, 
+        glm::quatLookAt(glm::normalize(glm::vec3{ 0.0f, 0.0f, -1.0f }), glm::vec3{0.0f, 1.0f, 0.0f}),
+        glm::vec3{1.0f, 1.0f, 1.0f},
+        glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}
     );
+
+    Splat4D s4d{
+        glm::vec4{2.0f, 0.0f, 0.0f, 0.0f},
+        glm::normalize(glm::quatLookAt(glm::vec3{1.0, 1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
+        glm::normalize(glm::quatLookAt(glm::vec3{1.0, -1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
+        glm::vec4{1.0, 1.0, 1.0, 1.0},
+        glm::vec4{1.0, 0.0, 0.0, 1.0}
+    };
 
     // Our state
     bool show_demo_window = true;
@@ -187,6 +187,7 @@ int main(void)
     {
         /* Render here */
         renderer.Clear();
+        cam.HandleInput(window, ImGui::IsAnyItemActive());
 
         shader.Bind();
         shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
@@ -206,7 +207,9 @@ int main(void)
         s3d.SetQuaternion(glm::quatLookAt(glm::normalize(splat3DMenuData.rot), glm::vec3{0.0f, 1.0f, 0.0f}));
         s3d.SetColor(splat3DMenuData.color);
 
-        s3d.Draw(renderer);
+        //s3d.Draw(renderer, SplatRenderShader3D, cam);
+
+        s4d.Draw(renderer, SplatRenderShader3D, cam);
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
@@ -231,6 +234,7 @@ int main(void)
         DebugMenus::MainMenuStrip(&menueStripData);
 
         DebugMenus::Splat3DMenu(&splat3DMenuData, &menueStripData.show_3DSplat);
+        DebugMenus::Splat4DMenu(&s4d, &cam, &menueStripData.show_4DSplat);
         //IMGUI
 
         ImGui::Render();
@@ -241,7 +245,6 @@ int main(void)
 
         /* Poll for and process events */
         GLCall(glfwPollEvents());
-        cam.HandleInput(window, ImGui::IsAnyItemActive());
 
     }
 

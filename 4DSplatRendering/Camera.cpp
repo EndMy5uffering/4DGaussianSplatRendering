@@ -92,26 +92,50 @@ glm::vec2 Camera::GetViewport()
 	return glm::normalize(glm::vec2(mWidth, mHeight));
 }
 
+glm::vec2 Camera::GetFocal()
+{
+	float d = (2.0f * tanf(mFOV * 0.5f));
+	return glm::vec2{ mWidth / d, mHeight / d };
+}
+
+float Camera::GetSpeed()
+{
+	return mSpeed;
+}
+
+bool Camera::IsViewFixed()
+{
+	return this->mFixViewPoint;
+}
+
+bool Camera::IsPositionFixed()
+{
+	return mFixPostion;
+}
+
 void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 {
 
 	if (imguiActive) return;
 
-	if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) 
+	if (!mFixPostion) 
 	{
-		position += orientation * mSpeed;
-	}
-	if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) 
-	{
-		position += orientation * -mSpeed;
-	}
-	if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
-	{
-		position += -mSpeed * glm::normalize(glm::cross(orientation, up));
-	}
-	if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
-	{
-		position += mSpeed * glm::normalize(glm::cross(orientation, up));
+		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
+		{
+			position += orientation * mSpeed;
+		}
+		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
+		{
+			position += orientation * -mSpeed;
+		}
+		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
+		{
+			position += -mSpeed * glm::normalize(glm::cross(orientation, up));
+		}
+		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
+		{
+			position += mSpeed * glm::normalize(glm::cross(orientation, up));
+		}
 	}
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
 	{
@@ -177,6 +201,7 @@ void Camera::Resize(int width, int height)
 
 void Camera::HandleCamRotation(GLFWwindow* window)
 {
+	if (mFixViewPoint) return;
 	double mouseX, mouseY;
 	glfwGetCursorPos(window, &mouseX, &mouseY);
 	glfwSetCursorPos(window, (double)mWidth / 2.0, (double)mHeight / 2.0);
@@ -190,4 +215,36 @@ void Camera::HandleCamRotation(GLFWwindow* window)
 	up = glm::normalize(glm::cross(orientation, side));
 
 	if(!mLockY) orientation = glm::rotate(orientation, (float)glm::radians(rotY), up);
+}
+
+void Camera::SetIsViewFixedOnPoint(bool fixed, glm::vec4 point)
+{
+	SetIsViewFixedOnPoint(fixed);
+
+	if (fixed) 
+	{
+		orientation = glm::normalize(glm::vec3(point) - position);
+
+		glm::vec3 side = glm::normalize(glm::cross(up, orientation));
+		up = glm::normalize(glm::cross(orientation, side));
+	}
+}
+
+void Camera::SetIsViewFixedOnPoint(bool fixed)
+{
+	this->mFixViewPoint = fixed;
+	if (fixed) 
+	{
+		mCaptureMouse = false;
+	}
+}
+
+void Camera::SetIsPositionFixed(bool fixed)
+{
+	this->mFixPostion = fixed;
+}
+
+void Camera::SetSpeed(float speed)
+{
+	this->mSpeed = speed;
 }

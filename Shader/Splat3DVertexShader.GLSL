@@ -7,8 +7,6 @@ uniform vec2 uScale;
 uniform vec2 uVec1;
 uniform vec2 uVec2;
 uniform vec2 uScreenPos;
-uniform mat4 uProj;
-//uniform mat4 uViewProj;
 
 out vec4 FragPos;
 

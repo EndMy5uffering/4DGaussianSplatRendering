@@ -6,6 +6,15 @@
 #include "imgui_impl_opengl3.h"
 #include <string>
 #include <map>
+#include <cstdlib>
+#include <ctime>
+
+
+#define ArrayFromV4(v) { v.x, v.y, v.z, v.w }
+#define V4FromArray(a) { a[0], a[1], a[2], a[3] }
+#define ArrayFromV3(v) { v.x, v.y, v.z }
+#define V3FromArray(a) { a[0], a[1], a[2] }
+#define RNG(lower, upper) lower + ((upper - lower) * (std::rand()/RAND_MAX))
 
 template<class T>
 class Menu {
@@ -75,6 +84,7 @@ namespace DebugMenus
     struct MenueStripData {
         bool show_2DSplat = false;
         bool show_3DSplat = false;
+        bool show_4DSplat = false;
         bool show_CamInfo = false;
         bool show_BlendOpt = false; 
         bool show_ShaderEditor = false;
@@ -141,14 +151,9 @@ namespace DebugMenus
         data->rot = { x0, x1, x2 };
         data->pos = { y0, y1, y2, 1.0f };
 
-        float c[] = {
-            data->color.r,
-            data->color.g,
-            data->color.b,
-            data->color.a
-        };
+        float c[] = ArrayFromV4(data->color);
         ImGui::ColorEdit4("Splat Color", c, ImGuiColorEditFlags_AlphaBar);
-        data->color = { c[0], c[1], c[2], c[3] };
+        data->color = V4FromArray(c);
 
         if (ImGui::Button("Reset Pos")) 
         {
@@ -163,6 +168,90 @@ namespace DebugMenus
         if (ImGui::Button("Reset Lambdas"))
         {
             data->lambdas = { 1.0, 1.0, 1.0 };
+        }
+
+        ImGui::End();
+    }
+
+    void Splat4DMenu(Splat4D* splat, Camera* cam, bool* is_Showing)
+    {
+        if (!*is_Showing) return;
+
+        ImGui::Begin("4D Splats", is_Showing);
+
+        float time = splat->GetTime();
+        ImGui::SliderFloat("Time:", &time, -100.0f, 100.0f);
+        splat->SetTime(time);
+
+        ImGui::NewLine();
+
+        float pos[] = ArrayFromV4(splat->GetPosititon());
+        ImGui::SliderFloat("Pos_x", &pos[0], -100.0f, 100.0f);
+        ImGui::SliderFloat("Pos_y", &pos[1], -100.0f, 100.0f);
+        ImGui::SliderFloat("Pos_z", &pos[2], -100.0f, 100.0f);
+        ImGui::SliderFloat("Pos_w", &pos[3], -100.0f, 100.0f);
+        splat->SetPosition(V4FromArray(pos));
+
+        ImGui::NewLine();
+
+        float scale[] = ArrayFromV4(splat->GetScale());
+        ImGui::SliderFloat("Scale_x", &scale[0], 0.0f, 25.0f);
+        ImGui::SliderFloat("Scale_y", &scale[1], 0.0f, 25.0f);
+        ImGui::SliderFloat("Scale_z", &scale[2], 0.0f, 25.0f);
+        ImGui::SliderFloat("Scale_w", &scale[3], 0.0f, 25.0f);
+        splat->SetScale(V4FromArray(scale));
+
+        ImGui::NewLine();
+
+        if (ImGui::Button("Rand Q0"))
+        {
+            std::srand(std::time(nullptr));
+            splat->SetQuat0(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
+        }
+
+        float quat0[] = ArrayFromV3(glm::eulerAngles(splat->GetQuat0()));
+        ImGui::SliderFloat("Q0_x", &quat0[0], 0.0f, PI * 2.0f);
+        ImGui::SliderFloat("Q0_y", &quat0[1], 0.0f, PI * 2.0f);
+        ImGui::SliderFloat("Q0_z", &quat0[2], 0.0f, PI * 2.0f);
+        splat->SetQuat0(glm::quat{V3FromArray(quat0)});
+
+
+        ImGui::NewLine();
+
+        if (ImGui::Button("Rand Q1"))
+        {
+            std::srand(std::time(nullptr));
+            splat->SetQuat1(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
+        }
+
+        float quat1[] = ArrayFromV4(splat->GetQuat1());
+        ImGui::SliderFloat("Q1_x", &quat1[0], 0.0f, 25.0f);
+        ImGui::SliderFloat("Q1_y", &quat1[1], 0.0f, 25.0f);
+        ImGui::SliderFloat("Q1_z", &quat1[2], 0.0f, 25.0f);
+        ImGui::SliderFloat("Q1_w", &quat1[3], 0.0f, 25.0f);
+
+        ImGui::NewLine();
+
+        float c[] = ArrayFromV4(splat->GetColor());
+        ImGui::ColorEdit4("Splat Color", c, ImGuiColorEditFlags_AlphaBar);
+        splat->SetColor(V4FromArray(c));
+
+        ImGui::NewLine();
+
+        bool isCamOnSplat = cam->IsViewFixed();
+        bool isPosFixed = cam->IsPositionFixed();
+            
+        ImGui::Checkbox("Keep cam on time splat", &isCamOnSplat);
+        cam->SetIsViewFixedOnPoint(isCamOnSplat, glm::vec4(splat->GetTimePos(), 1.0f));
+
+        ImGui::Checkbox("Keep distence to point", &isPosFixed);
+        cam->SetIsPositionFixed(isPosFixed);
+        if (isPosFixed)
+        {
+            float dist = glm::length(cam->position - splat->GetTimePos());
+            ImGui::SliderFloat("Dist:", &dist, 0.0f, 100.0f);
+            glm::vec3 dirSplatToCam = glm::normalize(cam->position - splat->GetTimePos());
+            cam->SetPosition(splat->GetTimePos() + (dirSplatToCam * dist));
         }
 
         ImGui::End();
@@ -299,7 +388,7 @@ namespace DebugMenus
             {
                 if (ImGui::Button("Splat 2D Menu")) data->show_2DSplat = !data->show_2DSplat;
                 if (ImGui::Button("Splat 3D Menu")) data->show_3DSplat = !data->show_3DSplat;
-                if (ImGui::Button("Splat 4D Menu")) {}
+                if (ImGui::Button("Splat 4D Menu")) data->show_4DSplat = !data->show_4DSplat;
                 ImGui::EndMenu();
             }
             if (ImGui::Button("Blend functions")) data->show_BlendOpt = !data->show_BlendOpt;
