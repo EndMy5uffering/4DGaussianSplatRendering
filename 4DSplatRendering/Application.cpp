@@ -155,8 +155,8 @@ int main(void)
 
     Splat4D s4d{
         glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
-        glm::normalize(glm::quatLookAt(glm::vec3{1.0, 1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
-        glm::normalize(glm::quatLookAt(glm::vec3{1.0, -1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
+        glm::normalize(glm::quat(1.2f,0.5f,3.5f,2.3f)),
+        glm::normalize(glm::quat(-1.2f,2.5f,0.5f,1.3f)),
         glm::vec4{2.0, 1.0, 2.0, 1.0},
         glm::vec4{1.0, 0.0, 0.0, 1.0}
     };

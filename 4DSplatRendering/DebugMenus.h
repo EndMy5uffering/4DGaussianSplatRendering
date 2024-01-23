@@ -159,7 +159,7 @@ namespace DebugMenus
         ImGui::Begin("4D Splats", is_Showing);
 
         float time = splat->GetTime();
-        ImGui::SliderFloat("Time:", &time, -100.0f, 100.0f);
+        ImGui::SliderFloat("Time:", &time, -1000.0f, 1000.0f);
         splat->SetTime(time);
 
         ImGui::NewLine();
@@ -188,11 +188,12 @@ namespace DebugMenus
             splat->SetQuat0(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
         }
 
-        float quat0[] = ArrayFromV3(glm::eulerAngles(splat->GetQuat0()));
-        ImGui::SliderFloat("Q0_x", &quat0[0], 0.0f, RAD_RANGE);
-        ImGui::SliderFloat("Q0_y", &quat0[1], 0.0f, RAD_RANGE);
-        ImGui::SliderFloat("Q0_z", &quat0[2], 0.0f, RAD_RANGE);
-        splat->SetQuat0(glm::quat(glm::highp_vec3(quat0[0], quat0[1], quat0[2])));
+        float quat0[] = ArrayFromV4(splat->GetQuat0());
+        ImGui::SliderFloat("Q0_x", &quat0[0], -RAD_RANGE, RAD_RANGE);
+        ImGui::SliderFloat("Q0_y", &quat0[1], -RAD_RANGE, RAD_RANGE);
+        ImGui::SliderFloat("Q0_z", &quat0[2], -RAD_RANGE, RAD_RANGE);
+        ImGui::SliderFloat("Q0_w", &quat0[3], -RAD_RANGE, RAD_RANGE);
+        splat->SetQuat0(glm::quat{quat0[3], quat0[0], quat0[1], quat0[2]});
 
 
         ImGui::NewLine();
@@ -203,11 +204,12 @@ namespace DebugMenus
             splat->SetQuat1(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
         }
 
-        float quat1[] = ArrayFromV3(glm::eulerAngles(splat->GetQuat1()));
+        float quat1[] = ArrayFromV4(splat->GetQuat1());
         ImGui::SliderFloat("Q1_x", &quat1[0], 0.0f, RAD_RANGE);
         ImGui::SliderFloat("Q1_y", &quat1[1], 0.0f, RAD_RANGE);
         ImGui::SliderFloat("Q1_z", &quat1[2], 0.0f, RAD_RANGE);
-        splat->SetQuat1(glm::quat(glm::highp_vec3(quat1[0], quat1[1], quat1[2])));
+        ImGui::SliderFloat("Q1_w", &quat1[3], 0.0f, RAD_RANGE);
+        splat->SetQuat1(glm::quat{quat1[3], quat1[0], quat1[1], quat1[2]});
 
         ImGui::NewLine();
 
