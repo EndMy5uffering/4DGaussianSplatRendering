@@ -147,8 +147,7 @@ public:
         mRot0{ rot0 },
         mRot1{ rot1 },
         mColor{ color },
-        mScale{ scalar },
-        mTimePos{ 0.0f }
+        mScale{ scalar }
     {
 
     }
@@ -183,15 +182,14 @@ public:
         glm::vec3 sig1_3_4{sig[0][3], sig[1][3], sig[2][3]};
         glm::vec3 sig4_1_3{sig[3][0], sig[3][1], sig[3][2]};
 
-        glm::vec3 splatPos = glm::vec3{ mPosition.x, mPosition.y, mPosition.z } + (sig1_3_4 * (1.0f / sig[3][3]) * (mTime - mScale[3]));
-        mTimePos = splatPos;
+        glm::vec3 scale_time_dependent = glm::vec3{ mScale } + (sig1_3_4 * (1.0f / sig[3][3]) * (mPosition.w - mScale[3]));
         glm::vec3 tvec = (1.0f / sig[3][3]) * sig4_1_3;
         glm::mat3 subPart = SplatUtils::vecToMat(sig1_3_4 , tvec);
         glm::mat3 sig3x3
         {
-            sig[0][0] - subPart[0][0], sig[0][1] - subPart[0][1], sig[0][2] - subPart[0][2],
-            sig[1][0] - subPart[1][0], sig[1][1] - subPart[1][1], sig[1][2] - subPart[1][2],
-            sig[2][0] - subPart[1][0], sig[2][1] - subPart[1][1], sig[2][2] - subPart[2][2]
+            glm::normalize(glm::vec3(sig[0][0] - subPart[0][0], sig[0][1] - subPart[0][1], sig[0][2] - subPart[0][2])),
+            glm::normalize(glm::vec3(sig[1][0] - subPart[1][0], sig[1][1] - subPart[1][1], sig[1][2] - subPart[1][2])),
+            glm::normalize(glm::vec3(sig[2][0] - subPart[2][0], sig[2][1] - subPart[2][1], sig[2][2] - subPart[2][2]))
         };
 
         glm::mat4 view = cam.GetViewMatrix();
@@ -203,7 +201,7 @@ public:
         };
         W = glm::transpose(W);
 
-        glm::vec4 posCamSpace = view * glm::vec4{splatPos, 1.0};
+        glm::vec4 posCamSpace = view * glm::vec4{glm::vec3(mPosition), 1.0};
         glm::vec4 posScreenSpace = cam.GetProjMatrix() * posCamSpace;
         posScreenSpace = posScreenSpace * (1.0f / posScreenSpace.w);
 
@@ -218,7 +216,7 @@ public:
                 0.0f, 0.0f, 0.0f
         };
 
-        glm::mat3 tscale = glm::diagonal3x3(glm::vec3(mScale));
+        glm::mat3 tscale = glm::diagonal3x3(scale_time_dependent);
         glm::mat3 V = sig3x3 * tscale * tscale * glm::transpose(sig3x3);
 
         glm::mat3 T = W * J;
@@ -255,16 +253,26 @@ public:
 
         mBillboard.Render(renderer);
 
+        glm::vec4 c0{0.87843f, 0.33725f, 0.99215f, 1.0f};
+        glm::vec4 c1{0.40784f, 0.42745f, 0.87843f, 1.0f};
+        glm::vec4 c2{0.58431f, 0.68627f, 0.75294f, 1.0f};
+        glm::vec4 c0_0{0.41568f, 0.69019f, 0.29803f, 1.0f};
+        glm::vec3 splatPos{mPosition};
+        renderer.DrawLine(splatPos, splatPos + sig3x3[0], c0, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + sig3x3[1], c1, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + sig3x3[2], c2, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + glm::vec3{a, b, c}, c0_0, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + glm::vec3{p, q, r}, c0_0, cam, 5.0f);
     }
 
     float GetTime()
     {
-        return this->mTime;
+        return this->mPosition.w;
     }
 
     void SetTime(float t) 
     {
-        this->mTime = t;
+        this->mPosition.w = t;
     }
 
     glm::vec4 GetColor() 
@@ -317,12 +325,6 @@ public:
         this->mPosition = p;
     }
 
-    glm::vec3 GetTimePos() 
-    {
-        return mTimePos;
-    }
-
-    
 
 private:
     glm::vec4 mScale;
@@ -332,8 +334,6 @@ private:
     glm::vec4 mPosition;
     Geometry::Billboard mBillboard;
     glm::mat4 mR;
-    float mTime = 0.0f;
-    glm::vec3 mTimePos;
 };
 
 class Splat3D
@@ -427,9 +427,9 @@ public:
 
     }
 
-    void SetLambas(float l0, float l1, float l2)
+    void SetLambas(glm::vec3 scale)
     {
-        this->mScale = {l0, l1, l2};
+        this->mScale = scale;
     }
 
     void SetQuaternion(glm::quat rot)

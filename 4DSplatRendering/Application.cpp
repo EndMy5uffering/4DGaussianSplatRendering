@@ -154,10 +154,10 @@ int main(void)
     );
 
     Splat4D s4d{
-        glm::vec4{2.0f, 0.0f, 0.0f, 0.0f},
+        glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
         glm::normalize(glm::quatLookAt(glm::vec3{1.0, 1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
         glm::normalize(glm::quatLookAt(glm::vec3{1.0, -1.0, 0.0}, glm::vec3{0.0, 1.0, 0.0})),
-        glm::vec4{1.0, 1.0, 1.0, 1.0},
+        glm::vec4{2.0, 1.0, 2.0, 1.0},
         glm::vec4{1.0, 0.0, 0.0, 1.0}
     };
 
@@ -169,12 +169,6 @@ int main(void)
     DebugMenus::Menu02Data menu2Data;
     menu2Data.buffer = "This could be your shader :D";
     menu2Data.shaders.push_back(&SplatRenderShader);
-
-    DebugMenus::Splat3DMenuData splat3DMenuData;
-    splat3DMenuData.rot = glm::vec3{ 1.0f, 1.0f, 1.0f };
-    splat3DMenuData.pos = s3d.GetPosition();
-    splat3DMenuData.lambdas = s3d.GetScale();
-    splat3DMenuData.color = s3d.GetColor();
 
     DebugMenus::BlendOpt blendOpt;
     blendOpt.selected0 = GL_SRC_ALPHA;
@@ -202,11 +196,6 @@ int main(void)
         //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
 
-        s3d.SetPosition(splat3DMenuData.pos);
-        s3d.SetLambas(splat3DMenuData.lambdas.x, splat3DMenuData.lambdas.y, splat3DMenuData.lambdas.z);
-        s3d.SetQuaternion(glm::quatLookAt(glm::normalize(splat3DMenuData.rot), glm::vec3{0.0f, 1.0f, 0.0f}));
-        s3d.SetColor(splat3DMenuData.color);
-
         //s3d.Draw(renderer, SplatRenderShader3D, cam);
 
         s4d.Draw(renderer, SplatRenderShader3D, cam);
@@ -233,7 +222,7 @@ int main(void)
         DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
 
-        DebugMenus::Splat3DMenu(&splat3DMenuData, &menueStripData.show_3DSplat);
+        DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
         DebugMenus::Splat4DMenu(&s4d, &cam, &menueStripData.show_4DSplat);
         //IMGUI
 
