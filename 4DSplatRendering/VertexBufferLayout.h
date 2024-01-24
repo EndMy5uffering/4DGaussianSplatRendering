@@ -8,6 +8,8 @@ struct VertexBufferElement
 	unsigned int type;
 	unsigned int count;
 	unsigned int normalized;
+	unsigned int customOffset = 0;
+	bool useCustomOffset = false;
 
 	static unsigned int GetSizeOfType(unsigned int type) 
 	{
@@ -62,6 +64,13 @@ public:
 	{
 		m_elements.push_back({ GL_UNSIGNED_BYTE, count, GL_TRUE });
 		m_Stride += count * VertexBufferElement::GetSizeOfType(GL_UNSIGNED_BYTE);
+	}
+
+	template<>
+	void Push<glm::mat4>(unsigned int count)
+	{
+		m_elements.push_back({ GL_FLOAT, 4, GL_FALSE });
+		m_Stride += sizeof(glm::mat4);
 	}
 
 	inline const std::vector<VertexBufferElement>& GetElements() const { return m_elements; };

@@ -161,6 +161,7 @@ public:
         glm::quat normRot1 = glm::normalize(mRot1);
         float a = normRot0.x, b = normRot0.y, c = normRot0.z, d = normRot0.w;
         float p = normRot1.x, q = normRot1.y, r = normRot1.z, s = normRot1.w;
+        //Spliting of quaternions in left and right rotational matrices
         glm::mat4 mRl
         {
             a, -b, -c, -d,
@@ -177,23 +178,33 @@ public:
                 s, r, -q, p
         };
 
+        //Forming rotation matrix
         mR = mRl * mRr;
 
         glm::mat4 sig = mR * glm::diagonal4x4(mScale) * glm::diagonal4x4(mScale) * glm::transpose(mR);
 
+        //temp vector for calculation
+        //in fomula Sigma_1:3,4 and Sigma_4,1:3
         glm::vec3 sig1_3_4{sig[0][3], sig[1][3], sig[2][3]};
         glm::vec3 sig4_1_3{sig[3][0], sig[3][1], sig[3][2]};
 
+        //calcualtion of 3D mu with respect to time
         glm::vec3 mean_time_dependent = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / sig[3][3]) * (mTime - mPosition.w));
+        //temp mu in the future for drawing the time axis
         glm::vec3 mean_time_dependent_next = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / sig[3][3]) * ((mTime+1.0f) - mPosition.w));
         glm::vec3 tvec = (1.0f / sig[3][3]) * sig4_1_3;
         glm::mat3 subPart = SplatUtils::vecToMat(sig1_3_4 , tvec);
         glm::mat3 sig3x3
         {
-            glm::normalize(glm::vec3(sig[0][0] - subPart[0][0], sig[0][1] - subPart[0][1], sig[0][2] - subPart[0][2])),
-            glm::normalize(glm::vec3(sig[1][0] - subPart[1][0], sig[1][1] - subPart[1][1], sig[1][2] - subPart[1][2])),
-            glm::normalize(glm::vec3(sig[2][0] - subPart[2][0], sig[2][1] - subPart[2][1], sig[2][2] - subPart[2][2]))
+            glm::vec3(sig[0]),
+            glm::vec3(sig[1]),
+            glm::vec3(sig[2])
         };
+
+        sig3x3 = sig3x3 - subPart;
+
+        //From this point on calculation and drawing of 3D splat formula was only copied to save time
+        //This part and the part above will be moved into the shader later on
 
         glm::mat4 view = cam.GetViewMatrix();
         glm::mat3 W
@@ -238,6 +249,7 @@ public:
 
         float z = posScreenSpace.z / posScreenSpace.w;
         float bound = 1.2 * posScreenSpace.w;
+
         if (z < 0. || z > 1. || posScreenSpace.x < -bound || posScreenSpace.x > bound || posScreenSpace.y < -bound || posScreenSpace.y > bound)
         {
             return;
@@ -253,16 +265,18 @@ public:
 
         mBillboard.Render(renderer);
 
+
+        //This part is for drawing the different axis and vectors
         glm::vec4 c0{0.87843f, 0.33725f, 0.99215f, 1.0f};
         glm::vec4 c1{0.40784f, 0.42745f, 0.87843f, 1.0f};
         glm::vec4 c2{0.58431f, 0.68627f, 0.75294f, 1.0f};
         glm::vec4 c0_0{0.41568f, 0.69019f, 0.29803f, 1.0f};
         glm::vec3 splatPos{mean_time_dependent};
-        renderer.DrawLine(splatPos, splatPos + glm::vec3{a, b, c}, c0_0, cam, 5.0f);
-        renderer.DrawLine(splatPos, splatPos + glm::vec3{p, q, r}, c0_0, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + glm::vec3{a, b, c} * 5.0f, c0_0, cam, 5.0f);
+        renderer.DrawLine(splatPos, splatPos + glm::vec3{p, q, r} * 5.0f , c0_0, cam, 5.0f);
         //visualize time direction
         glm::vec3 time_dir{glm::normalize(mean_time_dependent_next)};
-        renderer.DrawLine(splatPos  - time_dir * 10.0f, splatPos + time_dir * 10.0f, glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, cam, 2.0f);
+        renderer.DrawLine(splatPos - time_dir * 10.0f, splatPos + time_dir * 10.0f, glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, cam, 2.0f);
     }
 
     float GetTime()
@@ -340,11 +354,11 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color) : 
+    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color, std::vector<glm::mat4> transforms = {}) :
         mPosition(pos),
         mRot{ rot },
         mScale{ scale },
-        mColor{color}
+        mColor{ color }
     {
 
     }
@@ -355,6 +369,7 @@ public:
     {
         splatShader.Bind();
 
+        //This hole calculation part will be moved into the shader later on
         glm::mat4 view = cam.GetViewMatrix();
         glm::mat3 W
         {
@@ -480,7 +495,7 @@ private:
 class Splat2D
 {
 public:
-    Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader &renderShader, glm::vec4 color) :
+    Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, Shader& renderShader, glm::vec4 color, std::vector<glm::mat4> transforms = {}) :
         mPosition(pos),
         mBillboard{ pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f) },
         mVertFragShader(renderShader),

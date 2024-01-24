@@ -30,6 +30,15 @@ void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib) const
     GLCall(glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
 }
 
+void Renderer::DrawInstanced(const VertexArray& va, const IndexBuffer& ib, int instances) const
+{
+    va.Bind();
+    ib.Bind();
+
+    GLCall(glDrawElementsInstanced(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr, instances));
+
+}
+
 void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam, float thickness)
 {
     mLine3D.Bind();
