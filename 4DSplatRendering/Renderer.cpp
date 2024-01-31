@@ -30,15 +30,6 @@ void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib) const
     GLCall(glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
 }
 
-void Renderer::DrawInstanced(const VertexArray& va, const IndexBuffer& ib, int instances) const
-{
-    va.Bind();
-    ib.Bind();
-
-    GLCall(glDrawElementsInstanced(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr, instances));
-
-}
-
 void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam, float thickness)
 {
     mLine3D.Bind();
@@ -118,4 +109,16 @@ void Renderer::DrawLine(glm::vec2 v0, glm::vec2 v1, glm::vec4 color)
     glDeleteBuffers(1, &vertexbuffer);
     glDeleteVertexArrays(1, &array);
 }
+
+void Renderer::DrawAxis(Camera& cam, float length, float thickness)
+{
+    glm::vec3 lv0{0, 0, 0};
+    glm::vec3 lv1{10000, 0, 0};
+    glm::vec3 lv2{0, 10000, 0};
+    glm::vec3 lv3{0, 0, 10000};
+    DrawLine(lv0, lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, cam, thickness);
+    DrawLine(lv0, lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, cam, thickness);
+    DrawLine(lv0, lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, cam, thickness);
+}
+
 

@@ -9,6 +9,7 @@
 #include <sstream>
 #include <stb_image.h>
 #include <algorithm>
+#include <chrono>
 
 #include "Camera.h"
 #include "Renderer.h"
@@ -38,6 +39,16 @@
 int SCREEN_WIDTH = 1000;
 int SCREEN_HEIGHT = 1000;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
+
+std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
+{
+    std::vector<Geometry::Vertex> out;
+    out.push_back({ glm::vec2{pos.x + (0.5f * scale.x), pos.y + (0.5f * scale.y)}, color });
+    out.push_back({ glm::vec2{pos.x + (0.5f * scale.x), pos.y - (0.5f * scale.y)}, color });
+    out.push_back({ glm::vec2{pos.x - (0.5f * scale.x), pos.y - (0.5f * scale.y)}, color });
+    out.push_back({ glm::vec2{pos.x - (0.5f * scale.x), pos.y + (0.5f * scale.y)}, color });
+    return out;
+}
 
 float frand(float from, float to)
 {
@@ -91,7 +102,8 @@ int main(void)
     }
 
     /* Make the window's context current */
-    glfwMakeContextCurrent(window);
+    glfwMakeContextCurrent(window); 
+    //glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -114,21 +126,9 @@ int main(void)
     unsigned int vao;
     GLCall(glGenVertexArrays(1, &vao));
     GLCall(glBindVertexArray(vao));
-    
-    Texture texture0("../Textures/Kenney/PNG/Dark/texture_01.png", GL_RGB, GL_RGB);
-    texture0.Bind(1);
-    Texture skyTexture("../Textures/Kenney/PNG/Orange/texture_08.png", GL_RGB, GL_RGB);
-    skyTexture.Bind(2);
-    
-    Shader shader;
-    shader.AddShaderSource("../Shader/TemplateFragmentShader.GLSL", GL_FRAGMENT_SHADER);
-    shader.AddShaderSource("../Shader/TemplateVertexShader.GLSL", GL_VERTEX_SHADER);
-    shader.BuildShader();
 
     Renderer renderer;
     glEnable(GL_DEPTH_TEST);
-    //glEnable(GL_CULL_FACE);
-    //glCullFace(GL_FRONT);
     
     /* Loop until the user closes the window */
     glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
@@ -136,27 +136,40 @@ int main(void)
 
     Geometry::Box background(glm::vec3(0.0f), glm::vec3(5000.0f));
 
-    Shader SplatRenderShader;
-    SplatRenderShader.AddShaderSource("../Shader/Splat2DFragShader.GLSL", GL_FRAGMENT_SHADER);
-    SplatRenderShader.AddShaderSource("../Shader/Splat2DVertexShader.GLSL", GL_VERTEX_SHADER);
-    SplatRenderShader.BuildShader();
+    Shader SimpleBillboardShader;
+    SimpleBillboardShader.AddShaderSource("../Shader/SimpleBillboardFrag.GLSL", GL_FRAGMENT_SHADER);
+    SimpleBillboardShader.AddShaderSource("../Shader/SimpleBillboardVertex.GLSL", GL_VERTEX_SHADER);
+    SimpleBillboardShader.BuildShader();
 
-    Shader SplatRenderShader3D;
-    SplatRenderShader3D.AddShaderSource("../Shader/Splat3DFragShader.GLSL", GL_FRAGMENT_SHADER);
-    SplatRenderShader3D.AddShaderSource("../Shader/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
-    SplatRenderShader3D.BuildShader();
+    Shader S3DShader;
+    S3DShader.AddShaderSource("../Shader/Splats3D/Splat3DFragShader.GLSL", GL_FRAGMENT_SHADER);
+    S3DShader.AddShaderSource("../Shader/Splats3D/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
+    S3DShader.BuildShader();
 
-    Splat3D s3d(
-        glm::vec4{ 0.0f, 0.0f, 0.0f, 1.0f }, 
-        glm::quatLookAt(glm::normalize(glm::vec3{ 0.0f, 0.0f, -1.0f }), glm::vec3{0.0f, 1.0f, 0.0f}),
-        glm::vec3{1.0f, 1.0f, 1.0f},
-        glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}
-    );
+    Shader S4DShader;
+    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DFragShaderFull.GLSL", GL_FRAGMENT_SHADER);
+    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderFull.GLSL", GL_VERTEX_SHADER);
+    S4DShader.BuildShader();
+
+    std::vector<Splat4D> splats;
+
+    for (int i = 0; i < 500; ++i) 
+    {
+        splats.push_back(
+            {
+                glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
+                glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
+                glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
+                glm::vec4{frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 20.0)},
+                glm::vec4{frand(0.0, 1.0), frand(0.0, 1.0), frand(0.0, 1.0), 1.0}
+            });
+    }
+
 
     Splat4D s4d{
         glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
-        glm::normalize(glm::quat(1.2f,0.5f,3.5f,2.3f)),
-        glm::normalize(glm::quat(-1.2f,2.5f,0.5f,1.3f)),
+        glm::normalize(glm::quat(1.0f, 1.0f, -1.0f, 0.0f)),
+        glm::normalize(glm::quat(-1.0f, 1.0f, 1.0f, 0.0f)),
         glm::vec4{2.0, 1.0, 2.0, 1.0},
         glm::vec4{1.0, 0.0, 0.0, 1.0}
     };
@@ -168,28 +181,71 @@ int main(void)
 
     DebugMenus::Menu02Data menu2Data;
     menu2Data.buffer = "This could be your shader :D";
-    menu2Data.shaders.push_back(&SplatRenderShader);
 
     DebugMenus::BlendOpt blendOpt;
-    blendOpt.selected0 = GL_SRC_ALPHA;
+    blendOpt.selected0 = GL_ONE;
     blendOpt.selected1 = GL_ONE_MINUS_SRC_ALPHA;
 
     DebugMenus::MenueStripData menueStripData;
     menueStripData.cam = &cam;
 
+    glm::vec3 col{1.0f, 0.0f, 0.0f};
+    float idata[] = {
+        0.0f, 0.0f, 0.1f, 0.2f,
+        0.5f, 0.5f, 0.5f, 0.1f
+    };
+
+    /*std::vector<Geometry::Vertex> quads;
+
+    for (float i = 0; i < 2500; ++i) 
+    {
+        for (float j = 0; j < 2500; ++j)
+        {
+            std::vector<Geometry::Vertex> quad = MakeQuad({ j , i }, { 1.0f, 1.0f }, { (float)((int)(i * j) * 10 % 255) / 255.0f, (float)((int)(i * j) * 2 % 255) / 255.0f, (float)(int(i * j) * 18 % 255) / 255.0f, 1.0f });
+            for (Geometry::Vertex &v : quad)
+            {
+                quads.push_back(v);
+            }
+        }
+    }
+
+    unsigned int *idxBuff = (unsigned int*)malloc(6 * 2500 * 2500 * sizeof(unsigned int));
+
+    for (int i = 0; i < 6 * 2500 * 2500; i += 6)
+    {
+        idxBuff[i] = 0 + ((i / 6) * 4);
+        idxBuff[i + 1] = 1 + ((i / 6) * 4);
+        idxBuff[i + 2] = 2 + ((i / 6) * 4);
+        idxBuff[i + 3] = 2 + ((i / 6) * 4);
+        idxBuff[i + 4] = 0 + ((i / 6) * 4);
+        idxBuff[i + 5] = 3 + ((i / 6) * 4);
+    }
+    
+
+    VertexArray q0_va{};
+    IndexBuffer q0_ib{idxBuff, 6 * 2500 * 2500 };
+    VertexBuffer vb{ quads.data(), (int)quads.size() * sizeof(Geometry::Vertex)};
+    VertexBufferLayout vb_layout;
+    vb_layout.Push<glm::vec2>();
+    vb_layout.Push<glm::vec4>();
+    q0_va.AddBuffer(vb, vb_layout);*/
+
+    std::vector<Geometry::Splat4DVertex> verts = s4d.MakeMesh();
+    std::vector<unsigned int> idxBuff = s4d.GetIdxList(0);
+
+    VertexArray splatVertexArray{};
+    VertexBuffer splatVertexBuffer{ verts.data(), (unsigned int)verts.size() * sizeof(Geometry::Splat4DVertex) };
+    IndexBuffer splatIdxBuffer{ idxBuff.data(), (unsigned int)idxBuff.size() };
+    splatVertexArray.AddBuffer(splatVertexBuffer, s4d.GetBufferLayout());
+
+    double time = 0.0f;
+    double timeSpeed = 0.1f;
     while (!glfwWindowShouldClose(window))
     {
         /* Render here */
         renderer.Clear();
         cam.HandleInput(window, ImGui::IsAnyItemActive());
-
-        shader.Bind();
-        shader.SetUniformMat4f("u_cam", cam.GetViewProjMatrix());
-        
-        shader.SetUniform1i("u_tex0", 1);
-        shader.SetUniformMat4f("u_modle", background.GetTransform());
-        background.Render(renderer);
-        
+               
 
         glEnable(GL_BLEND);
         glDisable(GL_DEPTH_TEST);
@@ -197,19 +253,34 @@ int main(void)
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
 
         //s3d.Draw(renderer, SplatRenderShader3D, cam);
+        //s4d.SetTime(time);
+        s4d.Draw(renderer, S3DShader, cam);
 
-        s4d.Draw(renderer, SplatRenderShader3D, cam);
+        /*for (Splat4D& s : splats)
+        {
+            s.SetTime(time);
+            s.Draw(renderer, S3DShader, cam);
+        }*/
+
+        //InstanceShader.Bind();
+        //ib.RenderInstnaced(renderer, 2);
+
+        // Draw 4D splats with calulating shader
+        /*S4DShader.Bind();
+        S4DShader.SetUniform1f("uTime", 0.0f);
+        S4DShader.SetUniformMat4f("uView", cam.GetViewMatrix());
+        S4DShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
+        S4DShader.SetUniform2f("uFocal", cam.GetFocal());
+        S4DShader.SetUniform2f("uViewPort", cam.GetViewport());
+
+        renderer.Draw(splatVertexArray, splatIdxBuffer);*/
+        // End draw 4d
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
-        glm::vec3 lv0{0, 0, 0};
-        glm::vec3 lv1{10000, 0, 0};
-        glm::vec3 lv2{0, 10000, 0};
-        glm::vec3 lv3{0, 0, 10000};
-        renderer.DrawLine(lv0, lv1, glm::vec4{1.0, 0.0, 0.0, 1.0}, cam);
-        renderer.DrawLine(lv0, lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, cam);
-        renderer.DrawLine(lv0, lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, cam);
+        renderer.DrawAxis(cam, 500.0f, 3.0f);
+        
 
         //IMGUI
         ImGui_ImplOpenGL3_NewFrame();
@@ -222,7 +293,7 @@ int main(void)
         DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
 
-        DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
+        //DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
         DebugMenus::Splat4DMenu(&s4d, &cam, &menueStripData.show_4DSplat);
         //IMGUI
 
@@ -235,11 +306,16 @@ int main(void)
         /* Poll for and process events */
         GLCall(glfwPollEvents());
 
+        time += timeSpeed;
+        if (time > 10 || time < -10)
+            timeSpeed *= -1;
     }
 
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    //free(idxBuff);
 
     glfwTerminate();
     return 0;

@@ -29,16 +29,6 @@ void VertexArray::AddBuffer(const VertexBuffer& vb, const VertexBufferLayout& la
 
 }
 
-void VertexArray::AddBuffer(const VertexBuffer& vb, unsigned int layout, unsigned int numComponents, unsigned int type, unsigned int stride, void* offset)
-{
-	Bind();
-	vb.Bind();
-
-	GLCall(glVertexAttribPointer(layout, numComponents, type, GL_FALSE, stride, offset));
-	GLCall(glEnableVertexAttribArray(layout));
-
-}
-
 void VertexArray::Bind() const
 {
 	GLCall(glBindVertexArray(m_RendererID));

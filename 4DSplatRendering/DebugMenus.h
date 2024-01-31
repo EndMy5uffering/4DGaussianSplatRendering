@@ -159,12 +159,23 @@ namespace DebugMenus
         ImGui::Begin("4D Splats", is_Showing);
 
         float time = splat->GetTime();
-        ImGui::SliderFloat("Time:", &time, -1000.0f, 1000.0f);
+        if (ImGui::Button("Reset Time")) 
+        {
+            time = 0.0f;
+        }
+        ImGui::SliderFloat("Time:", &time, -10, 10.0f);
         splat->SetTime(time);
 
         ImGui::NewLine();
 
         float pos[] = ArrayFromV4(splat->GetPosititon());
+        if (ImGui::Button("Reset Position")) 
+        {
+            pos[0] = 0.0f;
+            pos[1] = 0.0f;
+            pos[2] = 0.0f;
+            pos[3] = 0.0f;
+        }
         ImGui::SliderFloat("Pos_x", &pos[0], -100.0f, 100.0f);
         ImGui::SliderFloat("Pos_y", &pos[1], -100.0f, 100.0f);
         ImGui::SliderFloat("Pos_z", &pos[2], -100.0f, 100.0f);
@@ -174,6 +185,13 @@ namespace DebugMenus
         ImGui::NewLine();
 
         float scale[] = ArrayFromV4(splat->GetScale());
+        if (ImGui::Button("Reset Scale")) 
+        {
+            scale[0] = 1.0f;
+            scale[1] = 1.0f;
+            scale[2] = 1.0f;
+            scale[3] = 1.0f;
+        }
         ImGui::SliderFloat("Scale_x", &scale[0], 0.0f, 25.0f);
         ImGui::SliderFloat("Scale_y", &scale[1], 0.0f, 25.0f);
         ImGui::SliderFloat("Scale_z", &scale[2], 0.0f, 25.0f);
@@ -235,6 +253,8 @@ namespace DebugMenus
             cam->SetPosition(splat->GetTimePos() + (dirSplatToCam * dist));
         }*/
 
+        ImGui::Checkbox("Helper Lines", &splat->drawHelperAxis);
+
         ImGui::End();
     }
 
@@ -274,6 +294,30 @@ namespace DebugMenus
                     ImGui::SetItemDefaultFocus();
             }
             ImGui::EndCombo();
+        }
+
+        if (ImGui::Button("Next Selection"))
+        {
+            if (data->selected0 != (--data->SelectOpt.end())->first && 
+                data->selected1 != (--data->SelectOpt.end())->first)
+            {
+                if (data->selected1 == (--data->SelectOpt.end())->first)
+                {
+                    data->selected1 = 0;
+                    for (auto i = data->SelectOpt.begin(); i != data->SelectOpt.end(); ++i)
+                    {
+                        if (i->first == data->selected0) data->selected0 = (++i)->first;
+                    }
+                }
+                else 
+                {
+
+                    for (auto i = data->SelectOpt.begin(); i != data->SelectOpt.end(); ++i)
+                    {
+                        if (i->first == data->selected1) data->selected1 = (++i)->first;
+                    }
+                }
+            }
         }
 
         ImGui::End();

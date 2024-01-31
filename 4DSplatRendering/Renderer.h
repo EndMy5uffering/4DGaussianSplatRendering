@@ -20,20 +20,20 @@ class Renderer
 public:
     
     Renderer() {
-        mLine2D.AddShaderSource("../Shader/Line2DFrag.GLSL", GL_FRAGMENT_SHADER);
-        mLine2D.AddShaderSource("../Shader/Line2DVert.GLSL", GL_VERTEX_SHADER);
+        mLine2D.AddShaderSource("../Shader/Lines/Line2DFrag.GLSL", GL_FRAGMENT_SHADER);
+        mLine2D.AddShaderSource("../Shader/Lines/Line2DVert.GLSL", GL_VERTEX_SHADER);
         mLine2D.BuildShader();
-        mLine3D.AddShaderSource("../Shader/LineFrag.GLSL", GL_FRAGMENT_SHADER);
-        mLine3D.AddShaderSource("../Shader/LineVert.GLSL", GL_VERTEX_SHADER);
+        mLine3D.AddShaderSource("../Shader/Lines/LineFrag.GLSL", GL_FRAGMENT_SHADER);
+        mLine3D.AddShaderSource("../Shader/Lines/LineVert.GLSL", GL_VERTEX_SHADER);
         mLine3D.BuildShader();
     }
 
     void Clear() const;
     void Draw(const VertexArray& va, const IndexBuffer& ib) const;
-    void DrawInstanced(const VertexArray& va, const IndexBuffer& ib, int instances) const;
     void DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam, float thickness);
     void DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam);
     void DrawLine(glm::vec2 v0, glm::vec2 v1, glm::vec4 color);
+    void DrawAxis(Camera& cam, float length = 1.0f, float thickness = 1.0f);
 
 private:
     Shader mLine3D;

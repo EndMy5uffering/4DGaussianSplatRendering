@@ -1,5 +1,7 @@
 #pragma once
 
+#include <array>
+
 #include "VertexArray.h"
 #include "VertexBuffer.h"
 #include "VertexBufferLayout.h"
@@ -15,6 +17,19 @@
 
 namespace Geometry 
 {
+
+    struct Vertex {
+        glm::vec2 Position;
+        glm::vec4 Color;
+    };
+
+    struct Splat4DVertex {
+        glm::vec2 VPosition;
+        glm::vec4 SPosition;
+        glm::vec4 Scale;
+        glm::mat4 Sig;
+        glm::vec4 Color;
+    };
 
     namespace BoxVertexData 
     {
@@ -167,7 +182,7 @@ namespace Geometry
 
     public:
 
-        Billboard(std::vector<glm::mat4> instanceTransforms = {}) :
+        Billboard(float* instancedata = 0, int instancedatasize = -1) :
             mVertexBuffer{ BillboardVertexData::BillboardVertexBuff, 5 * 4 * sizeof(float) },
             mIndexBuffer{ BillboardVertexData::BoxIdxBuff, 6 },
             mTransform(glm::mat4(1.0f))
@@ -175,24 +190,8 @@ namespace Geometry
             VertexBufferLayout layout;
             layout.Push<float>(3);
             layout.Push<float>(2);
-
-            /*if (instanceTransforms.size() > 0)
-            {
-
-                VertexBuffer instanced{ nullptr, 0 };
-                instanced.Bind();
-
-                mVertexArray.AddBuffer(instanced, 0, 4, GL_FLOAT, sizeof(glm::mat4), (void*)0);
-                mVertexArray.AddBuffer(instanced, 1, 4, GL_FLOAT, sizeof(glm::mat4), (void*)(1 * sizeof(glm::vec4)));
-                mVertexArray.AddBuffer(instanced, 2, 4, GL_FLOAT, sizeof(glm::mat4), (void*)(2 * sizeof(glm::vec4)));
-                mVertexArray.AddBuffer(instanced, 3, 4, GL_FLOAT, sizeof(glm::mat4), (void*)(3 * sizeof(glm::vec4)));
-                glVertexAttribDivisor(0, 1);
-                glVertexAttribDivisor(1, 1);
-                glVertexAttribDivisor(2, 1);
-                glVertexAttribDivisor(3, 1);
-            }*/
-
             mVertexArray.AddBuffer(mVertexBuffer, layout);
+
         }
 
         Billboard(glm::vec3 pos) : Billboard() { SetPosition(pos); }

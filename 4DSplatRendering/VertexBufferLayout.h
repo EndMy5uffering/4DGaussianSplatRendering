@@ -35,15 +35,14 @@ private:
 	unsigned int m_Stride;
 
 public:
-	VertexBufferLayout(VertexBufferLayout&) = delete;
 	VertexBufferLayout() : m_Stride(0)
 	{}
 
 	template<typename T>
-	void Push(unsigned int count)
-	{
-		//static_assert(false);
-	}
+	void Push(unsigned int count) { }
+
+	template<typename T>
+	void Push() { }
 
 	template<>
 	void Push<float>(unsigned int count) 
@@ -67,10 +66,52 @@ public:
 	}
 
 	template<>
-	void Push<glm::mat4>(unsigned int count)
+	void Push<glm::vec4>()
+	{
+		m_elements.push_back({ GL_FLOAT, 4, GL_FALSE });
+		m_Stride += sizeof(glm::vec4);
+	}
+
+	template<>
+	void Push<glm::vec3>()
+	{
+		m_elements.push_back({ GL_FLOAT, 3, GL_FALSE });
+		m_Stride += sizeof(glm::vec3);
+	}
+
+	template<>
+	void Push<glm::vec2>()
+	{
+		m_elements.push_back({ GL_FLOAT, 2, GL_FALSE });
+		m_Stride += sizeof(glm::vec2);
+	}
+
+	template<>
+	void Push<glm::mat2>()
+	{
+		m_elements.push_back({ GL_FLOAT, 2, GL_FALSE });
+		m_Stride += sizeof(glm::mat2);
+	}
+
+	template<>
+	void Push<glm::mat3>()
+	{
+		m_elements.push_back({ GL_FLOAT, 3, GL_FALSE });
+		m_Stride += sizeof(glm::mat3);
+	}
+
+	template<>
+	void Push<glm::mat4>()
 	{
 		m_elements.push_back({ GL_FLOAT, 4, GL_FALSE });
 		m_Stride += sizeof(glm::mat4);
+	}
+
+	template<>
+	void Push<glm::quat>()
+	{
+		m_elements.push_back({ GL_FLOAT, 4, GL_FALSE });
+		m_Stride += sizeof(glm::quat);
 	}
 
 	inline const std::vector<VertexBufferElement>& GetElements() const { return m_elements; };
