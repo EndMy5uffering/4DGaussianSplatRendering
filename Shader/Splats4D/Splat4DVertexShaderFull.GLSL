@@ -21,15 +21,6 @@ float maxf(float a, float b)
     return a >= b ? a : b;
 }
 
-mat3 vecToMat(vec3 v0, vec3 v1)
-{
-    return transpose(mat3(
-        v0.x * v1,
-        v0.y * v1,
-        v0.z * v1
-    ));
-}
-
 vec2 GetEigenValues2x2(mat2 mat) 
 {
     //https://www.youtube.com/watch?v=e50Bj7jn9IQ
@@ -68,14 +59,13 @@ void main()
     vec3 mean_time_dependent = iSPos.xyz + ((1.0 / iSig[3].z) * (uTime - iSPos.w) * sig4_1_3);
     vec3 tvec = (1.0 / iSig[3].z) * sig4_1_3;
 
-    mat3 subpart = vecToMat(sig1_3_4, tvec);
     mat3 sig3x3 = mat3(
         iSig[0].xyz,
         iSig[1].xyz,
         iSig[2].xyz
     );
 
-    sig3x3 = sig3x3 - subpart;
+    sig3x3 = sig3x3 - outerProduct(sig1_3_4, tvec);
 
     mat3 W = mat3(
         uView[0].xyz,

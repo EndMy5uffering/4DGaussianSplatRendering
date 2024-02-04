@@ -18,5 +18,5 @@ void main()
 	float c = p(FragPos.xy);
 
     color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c*uColor.w);
-	if(c < 0.01) discard; //color = vec4(uColor.x, uColor.y, uColor.z, uColor.w);
+	if(c < 0.01) color = vec4(uColor.x, uColor.y, uColor.z, uColor.w); //color = vec4(uColor.x, uColor.y, uColor.z, uColor.w);
 }

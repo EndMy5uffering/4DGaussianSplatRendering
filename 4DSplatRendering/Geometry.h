@@ -31,6 +31,13 @@ namespace Geometry
         glm::vec4 Color;
     };
 
+    struct Splat3DVertex {
+        glm::vec2 VPosition;
+        glm::vec3 SPosition;
+        glm::vec4 Color;
+        glm::mat3 GeoInfo;
+    };
+
     namespace BoxVertexData 
     {
         const float BoxVertexBuff[] = {

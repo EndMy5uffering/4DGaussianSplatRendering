@@ -89,22 +89,25 @@ public:
 	template<>
 	void Push<glm::mat2>()
 	{
-		m_elements.push_back({ GL_FLOAT, 2, GL_FALSE });
-		m_Stride += sizeof(glm::mat2);
+		Push<glm::vec2>();
+		Push<glm::vec2>();
 	}
 
 	template<>
 	void Push<glm::mat3>()
 	{
-		m_elements.push_back({ GL_FLOAT, 3, GL_FALSE });
-		m_Stride += sizeof(glm::mat3);
+		Push<glm::vec3>();
+		Push<glm::vec3>();
+		Push<glm::vec3>();
 	}
 
 	template<>
 	void Push<glm::mat4>()
 	{
-		m_elements.push_back({ GL_FLOAT, 4, GL_FALSE });
-		m_Stride += sizeof(glm::mat4);
+		Push<glm::vec4>();
+		Push<glm::vec4>();
+		Push<glm::vec4>();
+		Push<glm::vec4>();
 	}
 
 	template<>

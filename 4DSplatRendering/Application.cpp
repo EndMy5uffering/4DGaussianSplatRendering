@@ -38,7 +38,7 @@
 
 int SCREEN_WIDTH = 1000;
 int SCREEN_HEIGHT = 1000;
-Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, {0.0, 0.0, 5.0});
+Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 500.0, 500.0, 500.0 }, glm::normalize(glm::vec3{-1.0, -1.0, -1.0}));
 
 std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
 {
@@ -103,7 +103,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    //glfwSwapInterval(0); //Disable vsync
+    glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -146,6 +146,11 @@ int main(void)
     S3DShader.AddShaderSource("../Shader/Splats3D/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
     S3DShader.BuildShader();
 
+    Shader S3DShaderFull;
+    S3DShaderFull.AddShaderSource("../Shader/Splats3D/Splat3DFragShaderFull.GLSL", GL_FRAGMENT_SHADER);
+    S3DShaderFull.AddShaderSource("../Shader/Splats3D/Splat3DVertexShaderFull.GLSL", GL_VERTEX_SHADER);
+    S3DShaderFull.BuildShader();
+
     Shader S4DShader;
     S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DFragShaderFull.GLSL", GL_FRAGMENT_SHADER);
     S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderFull.GLSL", GL_VERTEX_SHADER);
@@ -174,6 +179,14 @@ int main(void)
         glm::vec4{1.0, 0.0, 0.0, 1.0}
     };
 
+    Splat3D s3d
+    {
+        glm::vec4{0.0f, 0.0f, 0.0f, 1.0f},
+        glm::quatLookAt(glm::vec3{1.0f, 0.0f, 0.0f}, glm::vec3{0.0f, 1.0f, 0.0}),
+        glm::vec3{10.0f, 3.0f, 1.0f},
+        glm::vec4{0.0f, 1.0f, 0.0f, 1.0f}
+    };
+
     // Our state
     bool show_demo_window = true;
     bool show_another_window = false;
@@ -189,47 +202,6 @@ int main(void)
     DebugMenus::MenueStripData menueStripData;
     menueStripData.cam = &cam;
 
-    glm::vec3 col{1.0f, 0.0f, 0.0f};
-    float idata[] = {
-        0.0f, 0.0f, 0.1f, 0.2f,
-        0.5f, 0.5f, 0.5f, 0.1f
-    };
-
-    /*std::vector<Geometry::Vertex> quads;
-
-    for (float i = 0; i < 2500; ++i) 
-    {
-        for (float j = 0; j < 2500; ++j)
-        {
-            std::vector<Geometry::Vertex> quad = MakeQuad({ j , i }, { 1.0f, 1.0f }, { (float)((int)(i * j) * 10 % 255) / 255.0f, (float)((int)(i * j) * 2 % 255) / 255.0f, (float)(int(i * j) * 18 % 255) / 255.0f, 1.0f });
-            for (Geometry::Vertex &v : quad)
-            {
-                quads.push_back(v);
-            }
-        }
-    }
-
-    unsigned int *idxBuff = (unsigned int*)malloc(6 * 2500 * 2500 * sizeof(unsigned int));
-
-    for (int i = 0; i < 6 * 2500 * 2500; i += 6)
-    {
-        idxBuff[i] = 0 + ((i / 6) * 4);
-        idxBuff[i + 1] = 1 + ((i / 6) * 4);
-        idxBuff[i + 2] = 2 + ((i / 6) * 4);
-        idxBuff[i + 3] = 2 + ((i / 6) * 4);
-        idxBuff[i + 4] = 0 + ((i / 6) * 4);
-        idxBuff[i + 5] = 3 + ((i / 6) * 4);
-    }
-    
-
-    VertexArray q0_va{};
-    IndexBuffer q0_ib{idxBuff, 6 * 2500 * 2500 };
-    VertexBuffer vb{ quads.data(), (int)quads.size() * sizeof(Geometry::Vertex)};
-    VertexBufferLayout vb_layout;
-    vb_layout.Push<glm::vec2>();
-    vb_layout.Push<glm::vec4>();
-    q0_va.AddBuffer(vb, vb_layout);*/
-
     std::vector<Geometry::Splat4DVertex> verts = s4d.MakeMesh();
     std::vector<unsigned int> idxBuff = s4d.GetIdxList(0);
 
@@ -237,6 +209,34 @@ int main(void)
     VertexBuffer splatVertexBuffer{ verts.data(), (unsigned int)verts.size() * sizeof(Geometry::Splat4DVertex) };
     IndexBuffer splatIdxBuffer{ idxBuff.data(), (unsigned int)idxBuff.size() };
     splatVertexArray.AddBuffer(splatVertexBuffer, s4d.GetBufferLayout());
+
+
+    int splatNum = 2;
+    std::vector<Geometry::Splat3DVertex> verts3d;
+    verts3d.reserve(4 * splatNum);
+    std::vector<unsigned int> idxBuff3d;
+    idxBuff.reserve(6 * splatNum);
+
+    float posRange = 0;
+
+    for (int i = 0; i < splatNum; ++i)
+    {
+        std::vector<Geometry::Splat3DVertex> v = Splat3D::GetSplatMesh(
+            { frand(-posRange,posRange), frand(-posRange,posRange), frand(-posRange,posRange), 0.0 },
+            glm::quatLookAt(glm::vec3{frand(-1.0f, 1.0f), frand(-1.0f, 1.0f), frand(-1.0f, 1.0f)}, glm::vec3{0.0f, 1.0f, 0.0}),
+            { frand(0.0f, 10.0f), frand(0.0f, 10.0f), frand(0.0f, 10.0f) },
+            { frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f }
+        );
+        verts3d.insert(verts3d.end(), std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+        std::vector<unsigned int> idx = Splat3D::GetIdxList(i*4);
+        idxBuff3d.insert(idxBuff3d.end(), std::make_move_iterator(idx.begin()), std::make_move_iterator(idx.end()));
+
+    }
+
+    VertexArray splatVertexArray3D{};
+    VertexBuffer splatVertexBuffer3D{ verts3d.data(), (unsigned int)verts3d.size() * sizeof(Geometry::Splat3DVertex) };
+    IndexBuffer splatIdxBuffer3D{ idxBuff3d.data(), (unsigned int)idxBuff3d.size() };
+    splatVertexArray3D.AddBuffer(splatVertexBuffer3D, s3d.GetBufferLayout());
 
     double time = 0.0f;
     double timeSpeed = 0.1f;
@@ -252,9 +252,9 @@ int main(void)
         //glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
 
-        //s3d.Draw(renderer, SplatRenderShader3D, cam);
+        //s3d.Draw(renderer, S3DShader, cam);
         //s4d.SetTime(time);
-        s4d.Draw(renderer, S3DShader, cam);
+        //s4d.Draw(window, renderer, S3DShader, cam);
 
         /*for (Splat4D& s : splats)
         {
@@ -276,6 +276,16 @@ int main(void)
         renderer.Draw(splatVertexArray, splatIdxBuffer);*/
         // End draw 4d
 
+        // Draw 3D splats with calulating shader
+        S3DShaderFull.Bind();
+        S3DShaderFull.SetUniformMat4f("uView", cam.GetViewMatrix());
+        S3DShaderFull.SetUniformMat4f("uProj", cam.GetProjMatrix());
+        S3DShaderFull.SetUniform2f("uFocal", cam.GetFocal());
+        S3DShaderFull.SetUniform2f("uViewPort", cam.GetViewport());
+
+        renderer.Draw(splatVertexArray3D, splatIdxBuffer3D);
+        // End draw 4d
+
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
@@ -293,7 +303,7 @@ int main(void)
         DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
 
-        //DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
+        DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
         DebugMenus::Splat4DMenu(&s4d, &cam, &menueStripData.show_4DSplat);
         //IMGUI
 

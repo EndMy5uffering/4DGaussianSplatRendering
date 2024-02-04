@@ -12,6 +12,7 @@
 #include <math.h>
 #include <sstream>
 #include "Utils.h"
+#include <GLFW/glfw3.h>
 
 #define PI 3.141592f
 //#define LCalc(mat) (2.0f * powf(PI, 3.f/2.f) * sqrtf(glm::determinant(mat)))
@@ -36,7 +37,7 @@ namespace SplatUtils
         float p = (mat[0][0] * mat[1][1]) - (mat[0][1] * mat[1][0]);
         float d = sqrt((m * m) - p);
 
-        return glm::vec2{maxf(m + d, 0.00001f), maxf(m - d, 0.00001f)};
+        return glm::vec2{maxf(m + d, 0.0000001f), maxf(m - d, 0.0000001f)};
     }
 
     static glm::mat2 GetEigenVectors2x2(const glm::mat2 &mat, glm::vec2 eigenValues) 
@@ -157,7 +158,7 @@ public:
 
     ~Splat4D() {}
 
-    void Draw(Renderer& renderer, Shader& splatShader, Camera& cam) 
+    void Draw(GLFWwindow* wnd, Renderer& renderer, Shader& splatShader, Camera& cam)
     {
         glm::quat normRot0 = glm::normalize(mRot0);
         glm::quat normRot1 = glm::normalize(mRot1);
@@ -190,6 +191,11 @@ public:
         mR = mRl * mRr;
 
         glm::mat4 sig = mR * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(mR);
+
+        if (glfwGetKey(wnd, GLFW_KEY_L) == GLFW_PRESS)
+        {
+            Utils::Mat4Print(sig);
+        }
 
         //temp vector for calculation
         //in fomula Sigma_1:3,4 and Sigma_4,1:3
@@ -288,6 +294,9 @@ public:
             //visualize time direction
             glm::vec3 time_dir{glm::normalize(mean_time_dependent_next - splatPos)};
             renderer.DrawLine(splatPos - time_dir * 20.0f, splatPos + time_dir * 20.0f, glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, cam, 5.0f);
+
+            glm::vec3 time_vec = glm::vec3{sig[0][3], sig[1][3], sig[2][3]} * (1.0f / sig[3][3]);
+            renderer.DrawLine(splatPos, splatPos + time_vec, glm::vec4(0.0, 1.0, 0.0, 1.0), cam, 5.0f);
         }
         
 
@@ -443,13 +452,16 @@ private:
 class Splat3D
 {
 public:
-    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color, std::vector<glm::mat4> transforms = {}) :
+    Splat3D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color) :
         mPosition(pos),
         mRot{ rot },
         mScale{ scale },
         mColor{ color }
     {
-
+        glm::mat3 tscale = glm::diagonal3x3(mScale);
+        glm::mat3 trot = glm::toMat3(mRot);
+        mGeoInfo = trot * tscale * tscale * glm::transpose(trot);
+        //Utils::Mat3Print(mGeoInfo);
     }
 
 	~Splat3D() {}
@@ -499,8 +511,8 @@ public:
 
         glm::mat2 eigenVecs = SplatUtils::GetEigenVectors2x2(upper, lambdas);
 
-        glm::vec2 v0 = glm::normalize(eigenVecs[0] / cam.GetViewport());
-        glm::vec2 v1 = glm::normalize(eigenVecs[1] / cam.GetViewport());
+        glm::vec2 v0 = glm::normalize(eigenVecs[0] ) / cam.GetViewport();
+        glm::vec2 v1 = glm::normalize(eigenVecs[1] ) / cam.GetViewport();
         glm::mat2 R{v0, v1};
         glm::mat2 S{l0, 0.0f, 0.0f, l1};
         glm::mat2 Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
@@ -530,6 +542,56 @@ public:
         r.DrawLine(lv0, lv0 + lv2, glm::vec4{0.0, 1.0, 0.0, 1.0}, cam);
         r.DrawLine(lv0, lv0 + lv3, glm::vec4{0.0, 0.0, 1.0, 1.0}, cam);
 
+    }
+
+    static std::vector<Geometry::Splat3DVertex> GetSplatMesh(glm::vec4 pos, glm::quat rot, glm::vec3 scale, glm::vec4 color)
+    {
+        glm::mat3 tscale = glm::diagonal3x3(scale);
+        glm::mat3 trot = glm::toMat3(rot);
+        glm::mat3 geoInfo = trot * tscale * tscale * glm::transpose(trot);
+
+        std::vector<Geometry::Splat3DVertex> vertices;
+        vertices.push_back({ {  0.5f,  0.5f }, pos, color, geoInfo });
+        vertices.push_back({ {  0.5f, -0.5f }, pos, color, geoInfo });
+        vertices.push_back({ { -0.5f, -0.5f }, pos, color, geoInfo });
+        vertices.push_back({ { -0.5f,  0.5f }, pos, color, geoInfo });
+
+        return vertices;
+    }
+
+    inline std::vector<Geometry::Splat3DVertex> MakeMesh()
+    {
+        std::vector<Geometry::Splat3DVertex> vertices;
+        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+
+        return vertices;
+
+    }
+
+    static std::vector<unsigned int> GetIdxList(unsigned int offset)
+    {
+        std::vector<unsigned int> idxBuff;
+        idxBuff.push_back(0 + offset);
+        idxBuff.push_back(2 + offset);
+        idxBuff.push_back(1 + offset);
+        idxBuff.push_back(2 + offset);
+        idxBuff.push_back(0 + offset);
+        idxBuff.push_back(3 + offset);
+        return idxBuff;
+    }
+
+    static const VertexBufferLayout GetBufferLayout()
+    {
+        VertexBufferLayout layout;
+        layout.Push<glm::vec2>();
+        layout.Push<glm::vec3>();
+        layout.Push<glm::vec4>();
+        layout.Push<glm::mat3>();
+
+        return layout;
     }
 
     void SetLambas(glm::vec3 scale)
@@ -578,6 +640,7 @@ private:
     glm::quat mRot;
     glm::vec4 mPosition;
     Geometry::Billboard mBillboard;
+    glm::mat3 mGeoInfo;
 };
 
 
