@@ -36,9 +36,10 @@
 #include "Utils.h"
 
 
-int SCREEN_WIDTH = 1000;
-int SCREEN_HEIGHT = 1000;
-Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 500.0, 500.0, 500.0 }, glm::normalize(glm::vec3{-1.0, -1.0, -1.0}));
+int SCREEN_WIDTH = 800;
+int SCREEN_HEIGHT = 800;
+Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 0, 0.0, 10.0 }, glm::normalize(glm::vec3{0.0, 0.0, -1.0}));
+
 
 std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
 {
@@ -52,6 +53,7 @@ std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scal
 
 float frand(float from, float to)
 {
+    //std::srand(std::time(nullptr));
     return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
 }
 
@@ -103,7 +105,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    glfwSwapInterval(0); //Disable vsync
+    //glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -160,13 +162,14 @@ int main(void)
 
     for (int i = 0; i < 500; ++i) 
     {
+        float c = frand(0.0, 1.0);
         splats.push_back(
             {
                 glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
                 glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
                 glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
                 glm::vec4{frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 20.0)},
-                glm::vec4{frand(0.0, 1.0), frand(0.0, 1.0), frand(0.0, 1.0), 1.0}
+                glm::vec4{c, c, c, 1.0}
             });
     }
 
@@ -211,21 +214,23 @@ int main(void)
     splatVertexArray.AddBuffer(splatVertexBuffer, s4d.GetBufferLayout());
 
 
-    int splatNum = 2;
+    int splatNum = 1000000;
     std::vector<Geometry::Splat3DVertex> verts3d;
     verts3d.reserve(4 * splatNum);
     std::vector<unsigned int> idxBuff3d;
     idxBuff.reserve(6 * splatNum);
 
-    float posRange = 0;
+    float posRange = 10;
 
     for (int i = 0; i < splatNum; ++i)
     {
+
+        float c = frand(0.0, 1.0);
         std::vector<Geometry::Splat3DVertex> v = Splat3D::GetSplatMesh(
-            { frand(-posRange,posRange), frand(-posRange,posRange), frand(-posRange,posRange), 0.0 },
-            glm::quatLookAt(glm::vec3{frand(-1.0f, 1.0f), frand(-1.0f, 1.0f), frand(-1.0f, 1.0f)}, glm::vec3{0.0f, 1.0f, 0.0}),
-            { frand(0.0f, 10.0f), frand(0.0f, 10.0f), frand(0.0f, 10.0f) },
-            { frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f }
+            { frand(-posRange, posRange), frand(-posRange, posRange), frand(-posRange, posRange), 0.0 },
+            glm::quatLookAt(glm::vec3{frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0)}, glm::vec3{0.0f, 1.0f, 0.0}),
+            { frand(1.0, 10.0), frand(1.0, 10.0), frand(1.0, 10.0) },
+            { c, c, c, 1.0f }
         );
         verts3d.insert(verts3d.end(), std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
         std::vector<unsigned int> idx = Splat3D::GetIdxList(i*4);
@@ -238,6 +243,7 @@ int main(void)
     IndexBuffer splatIdxBuffer3D{ idxBuff3d.data(), (unsigned int)idxBuff3d.size() };
     splatVertexArray3D.AddBuffer(splatVertexBuffer3D, s3d.GetBufferLayout());
 
+
     double time = 0.0f;
     double timeSpeed = 0.1f;
     while (!glfwWindowShouldClose(window))
@@ -245,7 +251,8 @@ int main(void)
         /* Render here */
         renderer.Clear();
         cam.HandleInput(window, ImGui::IsAnyItemActive());
-               
+        cam.SetIsViewFixedOnPoint(true, glm::vec4(0.0, 0.0, 0.0, 0.0));
+
 
         glEnable(GL_BLEND);
         glDisable(GL_DEPTH_TEST);
@@ -280,16 +287,16 @@ int main(void)
         S3DShaderFull.Bind();
         S3DShaderFull.SetUniformMat4f("uView", cam.GetViewMatrix());
         S3DShaderFull.SetUniformMat4f("uProj", cam.GetProjMatrix());
-        S3DShaderFull.SetUniform2f("uFocal", cam.GetFocal());
-        S3DShaderFull.SetUniform2f("uViewPort", cam.GetViewport());
 
         renderer.Draw(splatVertexArray3D, splatIdxBuffer3D);
-        // End draw 4d
+        // End draw 3d
+        
+        renderer.DrawAxis(cam, 500.0f, 3.0f);
+        renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, {1.0, 1.0, 1.0, 1.0}, cam, 5.0f);
 
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
-        renderer.DrawAxis(cam, 500.0f, 3.0f);
         
 
         //IMGUI

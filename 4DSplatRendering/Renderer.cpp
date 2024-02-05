@@ -30,7 +30,7 @@ void Renderer::Draw(const VertexArray& va, const IndexBuffer& ib) const
     GLCall(glDrawElements(GL_TRIANGLES, ib.GetCount(), GL_UNSIGNED_INT, nullptr));
 }
 
-void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam, float thickness)
+void Renderer::DrawLine(const glm::vec3 v0, const glm::vec3 v1, const glm::vec4 color, Camera& cam, float thickness)
 {
     mLine3D.Bind();
     mLine3D.SetUniformMat4f("uViewProj", cam.GetViewProjMatrix());
@@ -68,12 +68,12 @@ void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam
     glDeleteVertexArrays(1, &array);
 }
 
-void Renderer::DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam)
+void Renderer::DrawLine(const glm::vec3 v0, const glm::vec3 v1, const glm::vec4 color, Camera& cam)
 {
     DrawLine(v0, v1, color, cam, 1.0f);
 }
 
-void Renderer::DrawLine(glm::vec2 v0, glm::vec2 v1, glm::vec4 color)
+void Renderer::DrawLine(const glm::vec2 v0, const glm::vec2 v1, const glm::vec4 color)
 {
     mLine2D.Bind();
     mLine2D.SetUniform4f("uColor", color);
