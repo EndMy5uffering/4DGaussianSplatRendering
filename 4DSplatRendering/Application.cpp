@@ -38,7 +38,7 @@
 
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
-Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 0, 0.0, 10.0 }, glm::normalize(glm::vec3{0.0, 0.0, -1.0}));
+Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 0, 0.0, 100.0 }, glm::normalize(glm::vec3{0.0, 0.0, -1.0}));
 
 
 std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
@@ -138,11 +138,6 @@ int main(void)
 
     Geometry::Box background(glm::vec3(0.0f), glm::vec3(5000.0f));
 
-    Shader SimpleBillboardShader;
-    SimpleBillboardShader.AddShaderSource("../Shader/SimpleBillboardFrag.GLSL", GL_FRAGMENT_SHADER);
-    SimpleBillboardShader.AddShaderSource("../Shader/SimpleBillboardVertex.GLSL", GL_VERTEX_SHADER);
-    SimpleBillboardShader.BuildShader();
-
     Shader S3DShader;
     S3DShader.AddShaderSource("../Shader/Splats3D/Splat3DFragShader.GLSL", GL_FRAGMENT_SHADER);
     S3DShader.AddShaderSource("../Shader/Splats3D/Splat3DVertexShader.GLSL", GL_VERTEX_SHADER);
@@ -154,25 +149,9 @@ int main(void)
     S3DShaderFull.BuildShader();
 
     Shader S4DShader;
-    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DFragShaderFull.GLSL", GL_FRAGMENT_SHADER);
-    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderFull.GLSL", GL_VERTEX_SHADER);
+    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
+    S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShader.GLSL", GL_VERTEX_SHADER);
     S4DShader.BuildShader();
-
-    std::vector<Splat4D> splats;
-
-    for (int i = 0; i < 500; ++i) 
-    {
-        float c = frand(0.0, 1.0);
-        splats.push_back(
-            {
-                glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
-                glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
-                glm::normalize(glm::quat(frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0))),
-                glm::vec4{frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 5.0), frand(1.0, 20.0)},
-                glm::vec4{c, c, c, 1.0}
-            });
-    }
-
 
     Splat4D s4d{
         glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
@@ -205,41 +184,29 @@ int main(void)
     DebugMenus::MenueStripData menueStripData;
     menueStripData.cam = &cam;
 
-    std::vector<Geometry::Splat4DVertex> verts = s4d.MakeMesh();
-    std::vector<unsigned int> idxBuff = s4d.GetIdxList(0);
-
-    VertexArray splatVertexArray{};
-    VertexBuffer splatVertexBuffer{ verts.data(), (unsigned int)verts.size() * sizeof(Geometry::Splat4DVertex) };
-    IndexBuffer splatIdxBuffer{ idxBuff.data(), (unsigned int)idxBuff.size() };
-    splatVertexArray.AddBuffer(splatVertexBuffer, s4d.GetBufferLayout());
-
-
-    int splatNum = 1000000;
-    std::vector<Geometry::Splat3DVertex> verts3d;
-    verts3d.reserve(4 * splatNum);
+    int splatNum = 500;
+    std::vector<Splat3D> splats;
+    splats.reserve(splatNum);
     std::vector<unsigned int> idxBuff3d;
-    idxBuff.reserve(6 * splatNum);
+    idxBuff3d.reserve(6 * splatNum);
+    float splat_pos_range = 50;
 
-    float posRange = 10;
-
-    for (int i = 0; i < splatNum; ++i)
+    for (int i = 0; i < splatNum; ++i) 
     {
+        splats.push_back(Splat3D{
+            50.0f * glm::normalize(glm::vec4{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), 0.0}),
+            glm::quatLookAt(glm::vec3{0.0, 0.0, 0.0}, glm::vec3{0.0f, 1.0f, 0.0}),
+            {20.0, 20.0, 1.0},
+            {frand(0.0, 1.0), frand(0.0, 1.0), frand(0.0, 1.0), 1.0}
+            });
 
-        float c = frand(0.0, 1.0);
-        std::vector<Geometry::Splat3DVertex> v = Splat3D::GetSplatMesh(
-            { frand(-posRange, posRange), frand(-posRange, posRange), frand(-posRange, posRange), 0.0 },
-            glm::quatLookAt(glm::vec3{frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0)}, glm::vec3{0.0f, 1.0f, 0.0}),
-            { frand(1.0, 10.0), frand(1.0, 10.0), frand(1.0, 10.0) },
-            { c, c, c, 1.0f }
-        );
-        verts3d.insert(verts3d.end(), std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
-        std::vector<unsigned int> idx = Splat3D::GetIdxList(i*4);
+        std::vector<unsigned int> idx = Splat3D::GetIdxList(i * 4);
         idxBuff3d.insert(idxBuff3d.end(), std::make_move_iterator(idx.begin()), std::make_move_iterator(idx.end()));
 
     }
 
     VertexArray splatVertexArray3D{};
-    VertexBuffer splatVertexBuffer3D{ verts3d.data(), (unsigned int)verts3d.size() * sizeof(Geometry::Splat3DVertex) };
+    VertexBuffer splatVertexBuffer3D{ nullptr, (unsigned int)splats.size() * 4 * sizeof(Geometry::Splat3DVertex) };
     IndexBuffer splatIdxBuffer3D{ idxBuff3d.data(), (unsigned int)idxBuff3d.size() };
     splatVertexArray3D.AddBuffer(splatVertexBuffer3D, s3d.GetBufferLayout());
 
@@ -263,15 +230,6 @@ int main(void)
         //s4d.SetTime(time);
         //s4d.Draw(window, renderer, S3DShader, cam);
 
-        /*for (Splat4D& s : splats)
-        {
-            s.SetTime(time);
-            s.Draw(renderer, S3DShader, cam);
-        }*/
-
-        //InstanceShader.Bind();
-        //ib.RenderInstnaced(renderer, 2);
-
         // Draw 4D splats with calulating shader
         /*S4DShader.Bind();
         S4DShader.SetUniform1f("uTime", 0.0f);
@@ -288,7 +246,20 @@ int main(void)
         S3DShaderFull.SetUniformMat4f("uView", cam.GetViewMatrix());
         S3DShaderFull.SetUniformMat4f("uProj", cam.GetProjMatrix());
 
+        std::sort(splats.begin(), splats.end(), [](Splat3D& s0, Splat3D& s1) {
+            glm::vec4 proj0 = cam.GetViewProjMatrix() * s0.GetPosition();
+            glm::vec4 proj1 = cam.GetViewProjMatrix() * s1.GetPosition();
+            return proj0.w > proj1.w;
+        });
+        
+        for (int i = 0; i < splats.size(); ++i) 
+        {
+            splats[i].MakeMesh(splatVertexBuffer3D, i * 4 * sizeof(Geometry::Splat3DVertex));
+        }
+
         renderer.Draw(splatVertexArray3D, splatIdxBuffer3D);
+
+
         // End draw 3d
         
         renderer.DrawAxis(cam, 500.0f, 3.0f);

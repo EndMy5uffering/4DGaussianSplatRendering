@@ -12,8 +12,12 @@ public:
 
 	void Bind() const;
 	void Unbind() const;
+	void SubData(unsigned int offset,const void* data, unsigned int size) const;
+	void SubData(const void* data, unsigned int size) const;
+
+	bool isDynamic();
 
 private:
 	unsigned int m_RendererID;
-
+	bool mIsDynamic = false;
 };

@@ -532,7 +532,7 @@ public:
         splatShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
         splatShader.SetUniform4f("uColor", mColor);
 
-        mBillboard.Render(r);
+        //mBillboard.Render(r);
 
         glm::vec3 lv0(mPosition.x, mPosition.y, mPosition.z);
         glm::vec3 lv1(trot[0] * mScale[0]);
@@ -551,6 +551,7 @@ public:
         glm::mat3 geoInfo = trot * tscale * tscale * glm::transpose(trot);
 
         std::vector<Geometry::Splat3DVertex> vertices;
+        vertices.reserve(4);
         vertices.push_back({ {  0.5f,  0.5f }, pos, color, geoInfo });
         vertices.push_back({ {  0.5f, -0.5f }, pos, color, geoInfo });
         vertices.push_back({ { -0.5f, -0.5f }, pos, color, geoInfo });
@@ -562,6 +563,7 @@ public:
     inline std::vector<Geometry::Splat3DVertex> MakeMesh()
     {
         std::vector<Geometry::Splat3DVertex> vertices;
+        vertices.reserve(4);
         vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
         vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
         vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
@@ -571,9 +573,23 @@ public:
 
     }
 
+    inline void MakeMesh(VertexBuffer& vb, unsigned int offset)
+    {
+        std::vector<Geometry::Splat3DVertex> vertices;
+        vertices.reserve(4);
+        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+
+        vb.SubData(offset, vertices.data(), vertices.size() * sizeof(Geometry::Splat3DVertex));
+
+    }
+
     static std::vector<unsigned int> GetIdxList(unsigned int offset)
     {
         std::vector<unsigned int> idxBuff;
+        idxBuff.reserve(6);
         idxBuff.push_back(0 + offset);
         idxBuff.push_back(2 + offset);
         idxBuff.push_back(1 + offset);
@@ -639,7 +655,7 @@ private:
     glm::vec4 mColor;
     glm::quat mRot;
     glm::vec4 mPosition;
-    Geometry::Billboard mBillboard;
+    //Geometry::Billboard mBillboard;
     glm::mat3 mGeoInfo;
 };
 
