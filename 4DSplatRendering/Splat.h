@@ -15,7 +15,6 @@
 #include <GLFW/glfw3.h>
 
 #define PI 3.141592f
-//#define LCalc(mat) (2.0f * powf(PI, 3.f/2.f) * sqrtf(glm::determinant(mat)))
 
 namespace SplatUtils 
 {
@@ -60,28 +59,6 @@ namespace SplatUtils
         return { glm::normalize(eigenVec0), glm::normalize(eigenVec1) };
     }
 
-    static glm::vec3 Swap(const glm::vec3 v, int from, int to)
-    {
-        glm::vec3 vc(v);
-
-        float temp = vc[from];
-        vc[from] = vc[to];
-        vc[to] = temp;
-
-        return vc;
-    }
-
-    static glm::mat3 SwapRow(const glm::mat3 m, int from, int to)
-    {
-        glm::mat3 mc(m);
-
-        glm::vec3 temp = m[from];
-        mc[from] = mc[to];
-        mc[to] = temp;
-
-        return mc;
-    }
-
     static glm::mat3 vecToMat(glm::vec3 &v0, glm::vec3 &v1) {
         return glm::mat3
         {
@@ -89,53 +66,6 @@ namespace SplatUtils
             v0[1] * v1,
             v0[2] * v1
         };
-    }
-
-    static glm::vec3 SolveSystem3x3(const glm::mat3& a, const glm::vec3& b)
-    {
-        //TODO: implement that :D
-        glm::mat3 ac(a);
-        glm::vec3 bc(b);
-
-        //Pivo search
-        int len = 3, row = 0;
-        for (int i = 0; i < len; ++i) {
-            row = i;
-            double tmp_max = 0;
-            for (int j = i; j < len; ++j) {
-                if (abs(ac[j][i]) > tmp_max) {
-                    tmp_max = abs(ac[j][i]);
-                    row = j;
-                }
-            }
-
-            if (i < row) {
-                //swap row of matrix and vector
-                bc = Swap(bc, i, row);
-                ac = SwapRow(ac, i, row);
-            }
-
-            double factor;
-            for (int j = i + 1; j < len; ++j) {
-                factor = ac[j][i] / ac[i][i];
-                for (int k = i; k < len; ++k) {
-                    ac[j][k] -= factor * ac[i][k];
-                }
-
-                bc[j] -= factor * bc[i];
-            }
-        }
-
-        //back substitution
-        glm::vec3 result{0.0f};
-        for (int i = len - 1; i >= 0; --i) {
-            result[i] = bc[i] / ac[i][i];
-            for (int j = i - 1; j >= 0; --j) {
-                bc[j] -= (ac[j][i] * result[i]);
-            }
-        }
-
-        return result;
     }
 
 }
@@ -147,18 +77,13 @@ public:
 
 
     Splat4D(glm::vec4 pos, glm::quat rot0, glm::quat rot1, glm::vec4 scalar, glm::vec4 color) :
-        mPosition(pos),
+        mPosition{ pos },
         mRot0{ rot0 },
         mRot1{ rot1 },
         mColor{ color },
         mScale{ scalar },
-        mR {1}
-    {
-    }
-
-    ~Splat4D() {}
-
-    void Draw(GLFWwindow* wnd, Renderer& renderer, Shader& splatShader, Camera& cam)
+        mTimePos{ 0 },
+        mGeoInfo{ 0 }
     {
         glm::quat normRot0 = glm::normalize(mRot0);
         glm::quat normRot1 = glm::normalize(mRot1);
@@ -168,9 +93,9 @@ public:
         glm::mat4 mRl
         {
             a, -b, -c, -d,
-            b, a, -d, c,
-            c, d, a, -b,
-            d, -c, b, a
+                b, a, -d, c,
+                c, d, a, -b,
+                d, -c, b, a
         };
 
         glm::mat4 mRr
@@ -188,35 +113,39 @@ public:
         Scale4x4[3][3] = mScale[3];
 
         //Forming rotation matrix
-        mR = mRl * mRr;
+        glm::mat4 rot = mRl * mRr;
+        mGeoInfo = rot * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(rot);
+    }
 
-        glm::mat4 sig = mR * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(mR);
+    ~Splat4D() {}
+
+    void Draw(GLFWwindow* wnd, Renderer& renderer, Shader& splatShader, Camera& cam)
+    {
 
         if (glfwGetKey(wnd, GLFW_KEY_L) == GLFW_PRESS)
         {
-            Utils::Mat4Print(sig);
+            Utils::Mat4Print(mGeoInfo);
         }
 
         //temp vector for calculation
         //in fomula Sigma_1:3,4 and Sigma_4,1:3
-        glm::vec3 sig1_3_4{sig[0][3], sig[1][3], sig[2][3]};
-        glm::vec3 sig4_1_3{sig[3][0], sig[3][1], sig[3][2]};
+        glm::vec3 sig1_3_4{mGeoInfo[0][3], mGeoInfo[1][3], mGeoInfo[2][3]};
+        glm::vec3 sig4_1_3{mGeoInfo[3][0], mGeoInfo[3][1], mGeoInfo[3][2]};
 
         //calcualtion of 3D mu with respect to time
-        glm::vec3 mean_time_dependent = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / sig[3][3]) * (mTime - mPosition.w));
+        glm::vec3 mean_time_dependent = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * (mTime - mPosition.w));
         mTimePos = mean_time_dependent;
         //temp mu in the future for drawing the time axis
-        glm::vec3 mean_time_dependent_next = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / sig[3][3]) * ((mTime+1.0f) - mPosition.w));
-        glm::vec3 tvec = (1.0f / sig[3][3]) * sig4_1_3;
-        glm::mat3 subPart = SplatUtils::vecToMat(sig1_3_4 , tvec);
+        glm::vec3 mean_time_dependent_next = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * ((mTime+1.0f) - mPosition.w));
+        glm::vec3 tvec = (1.0f / mGeoInfo[3][3]) * sig4_1_3;
         glm::mat3 sig3x3
         {
-            glm::vec3(sig[0]),
-            glm::vec3(sig[1]),
-            glm::vec3(sig[2])
+            glm::vec3(mGeoInfo[0]),
+            glm::vec3(mGeoInfo[1]),
+            glm::vec3(mGeoInfo[2])
         };
 
-        sig3x3 = sig3x3 - subPart;
+        sig3x3 = sig3x3 - glm::outerProduct(sig1_3_4, tvec);;
 
         //From this point on calculation and drawing of 3D splat formula was only copied to save time
         //This part and the part above will be moved into the shader later on
@@ -276,7 +205,7 @@ public:
         splatShader.SetUniform2f("uVec2", v1);
         splatShader.SetUniform2f("uScreenPos", posScreenSpace.x, posScreenSpace.y);
         splatShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
-        splatShader.SetUniform4f("uColor", this->p(mTime, mPosition.w, sig[3][3])* mColor);
+        splatShader.SetUniform4f("uColor", this->p(mTime, mPosition.w, mGeoInfo[3][3]) * mColor);
 
         mBillboard.Render(renderer);
 
@@ -289,13 +218,13 @@ public:
             glm::vec4 c2{0.58431f, 0.68627f, 0.75294f, 1.0f};
             glm::vec4 c0_0{0.41568f, 0.69019f, 0.29803f, 1.0f};
             glm::vec3 splatPos{mean_time_dependent};
-            renderer.DrawLine(splatPos, splatPos + glm::vec3{a, b, c} *5.0f, c0_0, cam, 5.0f);
-            renderer.DrawLine(splatPos, splatPos + glm::vec3{p, q, r} *5.0f, c0_0, cam, 5.0f);
+            renderer.DrawLine(splatPos, splatPos + glm::vec3{mRot0.x, mRot0.y, mRot0.z} * 5.0f, c0_0, cam, 5.0f);
+            renderer.DrawLine(splatPos, splatPos + glm::vec3{mRot1.x, mRot1.y, mRot1.z} * 5.0f, c0_0, cam, 5.0f);
             //visualize time direction
             glm::vec3 time_dir{glm::normalize(mean_time_dependent_next - splatPos)};
             renderer.DrawLine(splatPos - time_dir * 20.0f, splatPos + time_dir * 20.0f, glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, cam, 5.0f);
 
-            glm::vec3 time_vec = glm::vec3{sig[0][3], sig[1][3], sig[2][3]} * (1.0f / sig[3][3]);
+            glm::vec3 time_vec = glm::vec3{mGeoInfo[0][3], mGeoInfo[1][3], mGeoInfo[2][3]} * (1.0f / mGeoInfo[3][3]);
             renderer.DrawLine(splatPos, splatPos + time_vec, glm::vec4(0.0, 1.0, 0.0, 1.0), cam, 5.0f);
         }
         
@@ -304,49 +233,30 @@ public:
 
     inline std::vector<Geometry::Splat4DVertex> MakeMesh()
     {
-        glm::quat normRot0 = glm::normalize(mRot0);
-        glm::quat normRot1 = glm::normalize(mRot1);
-        float a = normRot0.x, b = normRot0.y, c = normRot0.z, d = normRot0.w;
-        float p = normRot1.x, q = normRot1.y, r = normRot1.z, s = normRot1.w;
-        //Spliting of quaternions in left and right rotational matrices
-        glm::mat4 mRl
-        {
-            a, -b, -c, -d,
-                b, a, -d, c,
-                c, d, a, -b,
-                d, -c, b, a
-        };
-
-        glm::mat4 mRr
-        {
-            p, -q, -r, -s,
-                q, p, s, -r,
-                r, -s, p, q,
-                s, r, -q, p
-        };
-
-        glm::mat4 Scale4x4{1};
-        Scale4x4[0][0] = mScale[0];
-        Scale4x4[1][1] = mScale[1];
-        Scale4x4[2][2] = mScale[2];
-        Scale4x4[3][3] = mScale[3];
-
-        //Forming rotation matrix
-        mR = mRl * mRr;
-
-        glm::mat4 sig = mR * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(mR);
-
         std::vector<Geometry::Splat4DVertex> vertices;
-        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mScale, sig, mColor });
-        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mScale, sig, mColor });
-        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mScale, sig, mColor });
-        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mScale, sig, mColor });
+        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
 
         return vertices;
 
     }
 
-    std::vector<unsigned int> GetIdxList(unsigned int offset) 
+    inline void MakeMesh(VertexBuffer& vb, unsigned int offset)
+    {
+        std::vector<Geometry::Splat4DVertex> vertices;
+        vertices.reserve(4);
+        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+
+        vb.SubData(offset, vertices.data(), vertices.size() * sizeof(Geometry::Splat4DVertex));
+
+    }
+
+    static inline std::vector<unsigned int> GetIdxList(unsigned int offset) 
     {
         std::vector<unsigned int> idxBuff;
         idxBuff.push_back(0 + offset);
@@ -358,14 +268,13 @@ public:
         return idxBuff;
     }
 
-    const VertexBufferLayout GetBufferLayout() 
+    static inline VertexBufferLayout GetBufferLayout() 
     {
         VertexBufferLayout layout;
         layout.Push<glm::vec2>();
         layout.Push<glm::vec4>();
         layout.Push<glm::vec4>();
         layout.Push<glm::mat4>();
-        layout.Push<glm::vec4>();
 
         return layout;
     }
@@ -445,7 +354,7 @@ private:
     glm::vec4 mPosition;
     glm::vec3 mTimePos;
     Geometry::Billboard mBillboard;
-    glm::mat4 mR;
+    glm::mat4 mGeoInfo;
     float mTime = 0.0f;
 };
 

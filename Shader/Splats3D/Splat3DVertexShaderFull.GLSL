@@ -12,8 +12,8 @@ uniform mat4 uProj;
 
 out mat2 oSig;
 out vec4 oColor;
-out vec4 FragPos;
-out float ofaulty;
+out vec4 oFragPos;
+out float oFaulty;
 
 float maxf(float a, float b) 
 {
@@ -41,7 +41,7 @@ mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues)
 
 void main()
 {
-    ofaulty = 0.0;
+    oFaulty = 0.0;
     mat3 W = mat3(
         uView[0].xyz,
         uView[1].xyz,
@@ -57,7 +57,7 @@ void main()
     if (z < 0. || z > 1. || posScreenSpace.x < -bound || posScreenSpace.x > bound || posScreenSpace.y < -bound || posScreenSpace.y > bound) 
     {
         gl_Position = vec4(0,0,0,0);
-        ofaulty = 1.0;
+        oFaulty = 1.0;
         return;
     }
 
@@ -90,9 +90,8 @@ void main()
     mat2 _Sig = inverse(R * S * S * transpose(R));
 
     gl_Position = vec4(R * S * iVPos.xy, 0.0, 1.0);
-    FragPos = vec4(R * 8*S * iVPos.xy, 0.0, 1.0);
+    oFragPos = vec4(R * 8*S * iVPos.xy, 0.0, 1.0);
     gl_Position = uProj * gl_Position + posScreenSpace;
-
     oSig = _Sig;
     oColor = iColor;
 }

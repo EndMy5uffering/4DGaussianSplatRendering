@@ -2,9 +2,11 @@
 
 layout(location = 0) out vec4 color;
 
-in vec4 FragPos;
+in vec4 oFragPos;
 in mat2 oSig;
 in vec4 oColor;
+in float oFaulty;
+in float oTimeOpacity;
 
 float p(vec2 x)
 {
@@ -14,9 +16,10 @@ float p(vec2 x)
 
 void main()
 {
-	float c = p(FragPos.xy);
+	if(oFaulty > 0.0) discard;
+	float c = p(oFragPos.xy);
 
     //color = vec4(c*oColor.x, c*oColor.y, c*oColor.z, c*oColor.w);
-    color = vec4(0.0, 0.0, 0.0, 1.0);
-	//if(c < 0.01) discard; //color = vec4(uColor.x, uColor.y, uColor.z, uColor.w);
+    color = oTimeOpacity * vec4(c*oColor.x, c*oColor.y, c*oColor.z, c*oColor.w);
+	if(c < 0.0001) discard; //color = vec4(oColor.x, oColor.y, oColor.z, 1.0); //color = vec4(oColor.x, oColor.y, oColor.z, oColor.w);; //color = vec4(uColor.x, uColor.y, uColor.z, uColor.w);
 }
