@@ -28,6 +28,9 @@
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 #include <glm/gtc/quaternion.hpp>
+#include <glm/common.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
+#include <glm/gtx/matrix_operation.hpp>
 
 #include "Splat.h"
 
@@ -38,10 +41,12 @@
 
 #include "Utils.h"
 
+#include "radix_sort.hpp"
+
 
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
-Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 100.0, 100.0, 100.0 }, glm::normalize(glm::vec3{-1.0, -1.0, -1.0}));
+Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 100, 100, 100 }, glm::normalize(glm::vec3{-1.0, -1.0, -1.0}));
 
 
 std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
@@ -133,7 +138,6 @@ int main(void)
     GLCall(glBindVertexArray(vao));
 
     Renderer renderer;
-    glEnable(GL_DEPTH_TEST);
     
     /* Loop until the user closes the window */
     glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
@@ -154,12 +158,28 @@ int main(void)
     S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShader.GLSL", GL_VERTEX_SHADER);
     S4DShader.BuildShader();
 
+    Splat2D s2d{
+        glm::vec3{0,0,0},
+        glm::vec2{1,0},
+        1,1,
+        glm::vec4{1,1,1,1}
+    };
+
+    //Splat4D s4d{
+    //    glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
+    //    glm::normalize(glm::quat(2.0f, 4.0f, -2.0f, 1.0f)),
+    //    glm::normalize(glm::quat(3.0f, -1.0f, 1.0f, -2.0f)),
+    //    glm::vec4{10.0, 20.0, 20.0, 10.0},
+    //    glm::vec4{1.0, 0.0, 0.0, 1.0}
+    //};
+
     Splat4D s4d{
         glm::vec4{0.0f, 0.0f, 0.0f, 0.0f},
-        glm::normalize(glm::quat(1.0f, 1.0f, -1.0f, 0.0f)),
-        glm::normalize(glm::quat(1.0f, 3.0f, 1.0f, 0.0f)),
-        glm::vec4{10.0, 5.0, 3.0, 8.0},
-        glm::vec4{1.0, 0.0, 0.0, 1.0}
+        glm::quatLookAt(glm::vec3{1.0f, 0.0f, 0.0f}, glm::vec3{0.0f,1.0f,0.0f}),
+        glm::vec3{25.0f, 10.0f, 5.0f},
+        70.0f,
+        glm::vec3{50.0f, 50.0f, 0.0f},
+        glm::vec4{0.0f, 1.0f, 0.961f, 1.0f}
     };
 
     Splat3D s3d
@@ -215,35 +235,48 @@ int main(void)
 #endif // SPLAT3D_DRAW
 
 #ifdef SPLAT4D_DRAW
-    int numOf4DSpltas = 500000;
+    const int numOf4DSpltas = 500;
     std::vector<Splat4D> splats4D;
     splats4D.reserve(numOf4DSpltas);
     std::vector<unsigned int> idxBuff4d;
     idxBuff4d.reserve(6 * numOf4DSpltas);
 
-    splats4D.push_back(s4d);
-    std::vector<unsigned int> idx4D = Splat4D::GetIdxList(0);
-    idxBuff4d.insert(idxBuff4d.end(), std::make_move_iterator(idx4D.begin()), std::make_move_iterator(idx4D.end()));
+    GLuint key_buf;
+    glGenBuffers(1, &key_buf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+    GLuint values_buf;
+    glGenBuffers(1, &values_buf);
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, values_buf);
+    glBufferStorage(GL_SHADER_STORAGE_BUFFER, numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+
+    //splats4D.push_back(s4d);
+    //std::vector<unsigned int> idx4D = Splat4D::GetIdxList(0);
+    //idxBuff4d.insert(idxBuff4d.end(), std::make_move_iterator(idx4D.begin()), std::make_move_iterator(idx4D.end()));
 
 
     float splat_pos_range = 50;
-    for (int i = 0; i < numOf4DSpltas-1; ++i)
+    for (int i = 0; i < numOf4DSpltas; ++i)
     {
-
+        //glm::quat q0 = glm::quatLookAt(glm::vec3{frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0)}, glm::vec3{0.0f, 1.0f, 0.0});
+        //glm::quat q1 = glm::quatLookAt(glm::vec3{-q0.x, -q0.y, -q0.z}, glm::vec3{0.0f, 1.0f, 0.0});
         //glm::vec4 pos, glm::quat rot0, glm::quat rot1, glm::vec4 scalar, glm::vec4 color
+        glm::vec3 pos{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range)};
         splats4D.push_back(Splat4D{
-            50.0f * glm::normalize(glm::vec4{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), 0.0}),
-            glm::quatLookAt(glm::vec3{1.0, 0.0, 0.0}, glm::vec3{0.0f, 1.0f, 0.0}),
-            glm::quatLookAt(glm::vec3{0.0, 1.0, 0.0}, glm::vec3{0.0f, 1.0f, 0.0}),
-            {frand(25.0, 50.0), frand(25.0, 50.0), frand(25.0, 50.0), frand(25.0, 50.0)},
-            {frand(0.5, 1.0), frand(0.0, 0.5), 0.0, 1.0}
+            50.0f * glm::normalize(glm::vec4{pos, 0.0f}),
+            glm::normalize(glm::quatLookAt(glm::normalize(pos), glm::vec3(0,1,0))),
+            glm::vec3{20.0,20.0,20.0},
+            500.0f,
+            glm::normalize(pos.x > 0 ? glm::vec3{1.0, 0.0, 0.0} : glm::vec3{-1.0, 0.0, 0.0}) * 500.0f,
+            glm::vec4{frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f}
             });
 
         std::vector<unsigned int> idx4D = Splat4D::GetIdxList(i * 4);
         idxBuff4d.insert(idxBuff4d.end(), std::make_move_iterator(idx4D.begin()), std::make_move_iterator(idx4D.end()));
-
     }
-
+    radix_sort::sorter sorter(numOf4DSpltas);
 
     VertexArray splatVertexArray4D{};
     VertexBuffer splatVertexBuffer4D{ nullptr, (unsigned int)splats4D.size() * 4 * sizeof(Geometry::Splat4DVertex) };
@@ -254,6 +287,16 @@ int main(void)
     {
         splats4D[i].MakeMesh(splatVertexBuffer4D, i * 4 * sizeof(Geometry::Splat4DVertex));
     }
+
+
+    VertexArray singleSplat4DVA{};
+    VertexBuffer singleSplat4DVB{nullptr, 4 * sizeof(Geometry::Splat4DVertex) };
+    std::vector<unsigned int> singleSplatIndexList = Splat4D::GetIdxList(0);
+    IndexBuffer singleSplat4DIB{ singleSplatIndexList.data(), 6};
+    s4d.MakeMesh(singleSplat4DVB, 0);
+
+    singleSplat4DVA.AddBuffer(singleSplat4DVB, Splat4D::GetBufferLayout());
+
 #endif // SPLAT4D_DRAW
 
     double time = 0.0f;
@@ -271,10 +314,54 @@ int main(void)
         glDisable(GL_DEPTH_TEST);
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
 
+
+        renderer.DrawAxis(cam, 500.0f, 3.0f);
+        renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+
+
         //s3d.Draw(renderer, S3DShader, cam);
 
         // Draw 4D splats with calulating shader
 #ifdef SPLAT4D_DRAW
+
+
+        /*std::sort(std::begin(idxListForSorting), std::end(idxListForSorting), [&splats4D](unsigned int s0, unsigned int s1) {
+            glm::vec4 proj0 = cam.GetViewProjMatrix() * splats4D[s0].GetMeanInTime();
+            glm::vec4 proj1 = cam.GetViewProjMatrix() * splats4D[s1].GetMeanInTime();
+            return proj0.w > proj1.w;
+        });*/
+        std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
+        std::vector<GLfloat> val_buffer_data_pre(numOf4DSpltas);
+        for (int i = 0; i < numOf4DSpltas; ++i)
+        {
+            splats4D[i].SetTime(time);
+            key_buffer_data_pre[i] = i;
+            val_buffer_data_pre[i] = (cam.GetViewProjMatrix() * splats4D[i].GetMeanInTime()).z;
+        }
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLuint), key_buffer_data_pre.data());
+
+        glBindBuffer(GL_SHADER_STORAGE_BUFFER, values_buf);
+        glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLfloat), val_buffer_data_pre.data());
+
+        sorter.sort(values_buf, key_buf, numOf4DSpltas);
+
+        std::vector<GLuint> key_buf_data(numOf4DSpltas);
+        std::vector<GLfloat> val_buf_data(numOf4DSpltas);
+        GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf));
+        GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLuint), key_buf_data.data()));
+        GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, values_buf));
+        GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLfloat), val_buf_data.data()));
+
+        int localidx = 0;
+        for(size_t i = key_buf_data.size()-1; i != -1; --i)
+        {
+            splats4D[key_buf_data[i]].MakeMesh(splatVertexBuffer4D, localidx * 4 * sizeof(Geometry::Splat4DVertex));
+            localidx += 1;
+        }
+        
+
         S4DShader.Bind();
         S4DShader.SetUniform1f("uTime", time);
         S4DShader.SetUniformMat4f("uView", cam.GetViewMatrix());
@@ -283,8 +370,11 @@ int main(void)
         renderer.Draw(splatVertexArray4D, splatIdxBuffer4D);
 
 
-        //s4d.SetTime(0.0f);
+        //s4d.SetTime(time);
         //s4d.Draw(window, renderer, S3DShader, cam);
+        //renderer.Draw(singleSplat4DVA, singleSplat4DIB);
+        //s4d.DrawAxis(renderer, cam);
+
 #endif
         // End draw 4d
 
@@ -310,9 +400,6 @@ int main(void)
 
         // End draw 3d
         
-        renderer.DrawAxis(cam, 500.0f, 3.0f);
-        renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, {1.0, 1.0, 1.0, 1.0}, cam, 5.0f);
-
         glDisable(GL_BLEND);
         glEnable(GL_DEPTH_TEST);
 
@@ -326,9 +413,10 @@ int main(void)
         DebugMenus::ShaderEditor(&menu2Data, &menueStripData.show_ShaderEditor);
         DebugMenus::BlendOptMenu(&blendOpt, &menueStripData.show_BlendOpt);
         std::string val = getTextInfo(cam);
-        DebugMenus::CamInfo(io, val, &menueStripData.show_CamInfo);
+        DebugMenus::CamInfo(io, val, cam, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData);
 
+        DebugMenus::Splat2DMenu(&s2d, &menueStripData.show_2DSplat);
         DebugMenus::Splat3DMenu(&s3d, &menueStripData.show_3DSplat);
         DebugMenus::Splat4DMenu(&s4d, &cam, &menueStripData.show_4DSplat);
         //IMGUI

@@ -68,33 +68,44 @@ namespace DebugMenus
         Camera* cam;
     };
 
-	void Splat2DMenu(Splat2DMenuData* data, bool* is_Showing)
+	void Splat2DMenu(Splat2D* data, bool* is_Showing)
 	{
         if (!*is_Showing) return;
 
         ImGui::Begin("2D Splats", is_Showing);
 
-        ImGui::SliderFloat("Angle", &(data->angle), -180.0f, 180.0f);
-        ImGui::SliderFloat("l0", &(data->l0), 0.0f, 10.0f);
-        ImGui::SliderFloat("l1", &(data->l1), 0.0f, 10.0f);
+        glm::vec2 v0 = data->GetVector();
+        ImGui::SliderFloat("v_x", &v0.x, -1.0f, 1.0f);
+        ImGui::SliderFloat("v_y", &v0.y, -1.0f, 1.0f);
+        data->SetVectors(v0);
+        float l0 = data->GetLambda0();
+        float l1 = data->GetLambda1();
+        ImGui::SliderFloat("l0", &l0, 0.0f, 10.0f);
+        ImGui::SliderFloat("l1", &l1, 0.0f, 10.0f);
 
-        float x = data->splatPos.x, y = data->splatPos.y, z = data->splatPos.z;
-        ImGui::SliderFloat("Pos_X", &x, -10.0f, 10.0f);
-        ImGui::SliderFloat("Pos_Y", &y, -10.0f, 10.0f);
-        ImGui::SliderFloat("Pos_Z", &z, -10.0f, 10.0f);
+        float p[] = ArrayFromV3(data->GetPosition());
+        ImGui::SliderFloat("Pos_X", &p[0], -10.0f, 10.0f);
+        ImGui::SliderFloat("Pos_Y", &p[0], -10.0f, 10.0f);
+        ImGui::SliderFloat("Pos_Z", &p[0], -10.0f, 10.0f);
 
-        data->splatPos = glm::vec3{x,y,z};
+        data->SetPosition(V3FromArray(p));
 
-        ImGui::ColorPicker3("Splat Color", (data->color));
+        float c[] = ArrayFromV4(data->GetColor());
+        ImGui::ColorPicker3("Splat Color", c);
+        data->SetColor(V4FromArray(c));
+
 
         ImGui::End();
 	}
 
-    void CamInfo(ImGuiIO& io, std::string& info, bool* is_Showing)
+    void CamInfo(ImGuiIO& io, std::string& info, Camera& cam, bool* is_Showing)
     {
         if (!*is_Showing) return;
 
         ImGui::Begin("Cam Info", is_Showing);
+        float camSpeed = cam.GetSpeed();
+        ImGui::SliderFloat("Speed", &camSpeed, 0.0, 100.0);
+        cam.SetSpeed(camSpeed);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
         ImGui::Text(info.c_str());
         ImGui::End();
@@ -163,7 +174,7 @@ namespace DebugMenus
         {
             time = 0.0f;
         }
-        ImGui::SliderFloat("Time:", &time, -10, 10.0f);
+        ImGui::SliderFloat("Time:", &time, -25.0f, 25.0f);
         splat->SetTime(time);
 
         ImGui::NewLine();
@@ -184,53 +195,6 @@ namespace DebugMenus
 
         ImGui::NewLine();
 
-        float scale[] = ArrayFromV4(splat->GetScale());
-        if (ImGui::Button("Reset Scale")) 
-        {
-            scale[0] = 1.0f;
-            scale[1] = 1.0f;
-            scale[2] = 1.0f;
-            scale[3] = 1.0f;
-        }
-        ImGui::SliderFloat("Scale_x", &scale[0], 0.0f, 25.0f);
-        ImGui::SliderFloat("Scale_y", &scale[1], 0.0f, 25.0f);
-        ImGui::SliderFloat("Scale_z", &scale[2], 0.0f, 25.0f);
-        ImGui::SliderFloat("Scale_w", &scale[3], 0.0f, 25.0f);
-        splat->SetScale(V4FromArray(scale));
-
-        ImGui::NewLine();
-
-        if (ImGui::Button("Rand Q0"))
-        {
-            std::srand(std::time(nullptr));
-            splat->SetQuat0(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
-        }
-
-        float quat0[] = ArrayFromV4(splat->GetQuat0());
-        ImGui::SliderFloat("Q0_x", &quat0[0], -RAD_RANGE, RAD_RANGE);
-        ImGui::SliderFloat("Q0_y", &quat0[1], -RAD_RANGE, RAD_RANGE);
-        ImGui::SliderFloat("Q0_z", &quat0[2], -RAD_RANGE, RAD_RANGE);
-        ImGui::SliderFloat("Q0_w", &quat0[3], -RAD_RANGE, RAD_RANGE);
-        splat->SetQuat0(glm::quat{quat0[3], quat0[0], quat0[1], quat0[2]});
-
-
-        ImGui::NewLine();
-
-        if (ImGui::Button("Rand Q1"))
-        {
-            std::srand(std::time(nullptr));
-            splat->SetQuat1(glm::quatLookAt(glm::vec3{RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f), RNG(-1.0f, 1.0f)}, glm::vec3{0.0, 1.0f, 0.0f}));
-        }
-
-        float quat1[] = ArrayFromV4(splat->GetQuat1());
-        ImGui::SliderFloat("Q1_x", &quat1[0], 0.0f, RAD_RANGE);
-        ImGui::SliderFloat("Q1_y", &quat1[1], 0.0f, RAD_RANGE);
-        ImGui::SliderFloat("Q1_z", &quat1[2], 0.0f, RAD_RANGE);
-        ImGui::SliderFloat("Q1_w", &quat1[3], 0.0f, RAD_RANGE);
-        splat->SetQuat1(glm::quat{quat1[3], quat1[0], quat1[1], quat1[2]});
-
-        ImGui::NewLine();
-
         float c[] = ArrayFromV4(splat->GetColor());
         ImGui::ColorEdit4("Splat Color", c, ImGuiColorEditFlags_AlphaBar);
         splat->SetColor(V4FromArray(c));
@@ -240,19 +204,6 @@ namespace DebugMenus
         bool isCamOnSplat = cam->IsViewFixed();
         bool isPosFixed = cam->IsPositionFixed();
             
-        /*ImGui::Checkbox("Keep cam on time splat", &isCamOnSplat);
-        cam->SetIsViewFixedOnPoint(isCamOnSplat, glm::vec4(splat->GetTimePos(), 1.0f));
-
-        ImGui::Checkbox("Keep distence to point", &isPosFixed);
-        cam->SetIsPositionFixed(isPosFixed);
-        if (isPosFixed)
-        {
-            float dist = glm::length(cam->position - splat->GetTimePos());
-            ImGui::SliderFloat("Dist:", &dist, 0.0f, 100.0f);
-            glm::vec3 dirSplatToCam = glm::normalize(cam->position - splat->GetTimePos());
-            cam->SetPosition(splat->GetTimePos() + (dirSplatToCam * dist));
-        }*/
-
         ImGui::Checkbox("Helper Lines", &splat->drawHelperAxis);
 
         ImGui::End();
