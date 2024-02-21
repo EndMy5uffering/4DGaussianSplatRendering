@@ -16,6 +16,8 @@
 
 #define PI 3.141592f
 
+constexpr unsigned long SPLAT4D_4_VERTEX_SIZE = 4 * sizeof(Geometry::Splat4DVertex);
+
 namespace SplatUtils 
 {
     static float maxf(float a, float b) 
@@ -80,7 +82,8 @@ public:
         mPosition{ pos },
         mColor{ color },
         mTimePos{ 0 },
-        mGeoInfo{ 0 }
+        mGeoInfo{ 0 },
+        mDir{ 0 }
     {
         glm::quat normRot0 = glm::normalize(rot0);
         glm::quat normRot1 = glm::normalize(rot1);
@@ -118,7 +121,8 @@ public:
         mPosition{ pos },
         mColor{ color },
         mTimePos{ 0 },
-        mGeoInfo{ 0 }
+        mGeoInfo{ 0 },
+        mDir{ 0 }
     {
         glm::mat3 R = glm::toMat3(rot);
         glm::mat3 S = glm::diagonal3x3(scale);
@@ -137,6 +141,8 @@ public:
         };
 
         mGeoInfo = cov;
+
+        mDir = glm::vec3{ cov[0][3], cov[1][3] ,cov[2][3] } * (1.0f / cov[3][3]);
     }
 
     ~Splat4D() {}
@@ -325,10 +331,12 @@ public:
 
     inline glm::vec4 GetMeanInTime() 
     {
-        glm::vec3 sig1_3_4{mGeoInfo[0][3], mGeoInfo[1][3], mGeoInfo[2][3]};
-        glm::vec3 mean_time_dependent = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * (mTime - mPosition.w));
+        float ctime = (mTime - mPosition.w);
+        float x = mPosition.x + mDir.x * ctime;
+        float y = mPosition.y + mDir.y * ctime;
+        float z = mPosition.z + mDir.z * ctime;
 
-        return glm::vec4{mean_time_dependent, 1};
+        return glm::vec4{x, y, z, 1};
     }
 
     inline void MakeMesh(VertexBuffer& vb, unsigned int offset)
@@ -340,7 +348,7 @@ public:
         vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
         vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
 
-        vb.SubData(offset, vertices.data(), vertices.size() * sizeof(Geometry::Splat4DVertex));
+        vb.SubData(offset, vertices.data(), SPLAT4D_4_VERTEX_SIZE);
     }
 
     static inline std::vector<unsigned int> GetIdxList(unsigned int offset) 
@@ -391,37 +399,7 @@ public:
     {
         this->mColor = color;
     }
-    /*
-    glm::quat GetQuat0() 
-    {
-        return this->mRot0;
-    }
 
-    void SetQuat0(glm::quat q) 
-    {
-        this->mRot0 = q;
-    }
-
-    glm::quat GetQuat1() 
-    {
-        return this->mRot1;
-    }
-
-    void SetQuat1(glm::quat q) 
-    {
-        this->mRot1 = q;
-    }
-
-    glm::vec4 GetScale() 
-    {
-        return this->mScale;
-    }
-
-    void SetScale(glm::vec4 s) 
-    {
-        this->mScale = s;
-    }
-    */
     glm::vec4 GetPosititon() 
     {
         return this->mPosition;
@@ -437,8 +415,8 @@ private:
     glm::vec4 mColor;
     glm::vec4 mPosition;
     glm::vec3 mTimePos;
-    //Geometry::Billboard mBillboard;
     glm::mat4 mGeoInfo;
+    glm::vec3 mDir;
     float mTime = 0.0f;
 };
 

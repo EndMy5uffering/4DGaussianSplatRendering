@@ -13,6 +13,7 @@
 #include <stb_image.h>
 #include <algorithm>
 #include <chrono>
+#include <functional>
 
 #include "Camera.h"
 #include "Renderer.h"
@@ -43,11 +44,15 @@
 
 #include "radix_sort.hpp"
 
+#include "BSPTree.h"
+
 
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 100, 100, 100 }, glm::normalize(glm::vec3{-1.0, -1.0, -1.0}));
 
+constexpr unsigned long SIZE_OF_SPLAT4D = sizeof(Geometry::Splat4DVertex);
+constexpr unsigned long SIZE_OF_4_SPLAT4D = 4 * sizeof(Geometry::Splat4DVertex);
 
 std::vector<Geometry::Vertex> MakeQuad(const glm::vec2 pos, const glm::vec2 scale, const glm::vec4 color) 
 {
@@ -113,7 +118,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    //glfwSwapInterval(0); //Disable vsync
+    glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -199,7 +204,7 @@ int main(void)
     menu2Data.buffer = "This could be your shader :D";
 
     DebugMenus::BlendOpt blendOpt;
-    blendOpt.selected0 = GL_ONE;
+    blendOpt.selected0 = GL_SRC_ALPHA;
     blendOpt.selected1 = GL_ONE_MINUS_SRC_ALPHA;
 
     DebugMenus::MenueStripData menueStripData;
@@ -235,7 +240,7 @@ int main(void)
 #endif // SPLAT3D_DRAW
 
 #ifdef SPLAT4D_DRAW
-    const int numOf4DSpltas = 500;
+    const int numOf4DSpltas = 5000;
     std::vector<Splat4D> splats4D;
     splats4D.reserve(numOf4DSpltas);
     std::vector<unsigned int> idxBuff4d;
@@ -279,18 +284,18 @@ int main(void)
     radix_sort::sorter sorter(numOf4DSpltas);
 
     VertexArray splatVertexArray4D{};
-    VertexBuffer splatVertexBuffer4D{ nullptr, (unsigned int)splats4D.size() * 4 * sizeof(Geometry::Splat4DVertex) };
+    VertexBuffer splatVertexBuffer4D{ nullptr, (unsigned int)splats4D.size() * SIZE_OF_4_SPLAT4D };
     IndexBuffer splatIdxBuffer4D{ idxBuff4d.data(), (unsigned int)idxBuff4d.size() };
     splatVertexArray4D.AddBuffer(splatVertexBuffer4D, Splat4D::GetBufferLayout());
 
     for (int i = 0; i < splats4D.size(); ++i)
     {
-        splats4D[i].MakeMesh(splatVertexBuffer4D, i * 4 * sizeof(Geometry::Splat4DVertex));
+        splats4D[i].MakeMesh(splatVertexBuffer4D, i * SIZE_OF_4_SPLAT4D);
     }
 
 
     VertexArray singleSplat4DVA{};
-    VertexBuffer singleSplat4DVB{nullptr, 4 * sizeof(Geometry::Splat4DVertex) };
+    VertexBuffer singleSplat4DVB{nullptr, SIZE_OF_4_SPLAT4D };
     std::vector<unsigned int> singleSplatIndexList = Splat4D::GetIdxList(0);
     IndexBuffer singleSplat4DIB{ singleSplatIndexList.data(), 6};
     s4d.MakeMesh(singleSplat4DVB, 0);
@@ -330,7 +335,7 @@ int main(void)
             glm::vec4 proj1 = cam.GetViewProjMatrix() * splats4D[s1].GetMeanInTime();
             return proj0.w > proj1.w;
         });*/
-        std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
+        /*std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
         std::vector<GLfloat> val_buffer_data_pre(numOf4DSpltas);
         for (int i = 0; i < numOf4DSpltas; ++i)
         {
@@ -359,8 +364,27 @@ int main(void)
         {
             splats4D[key_buf_data[i]].MakeMesh(splatVertexBuffer4D, localidx * 4 * sizeof(Geometry::Splat4DVertex));
             localidx += 1;
-        }
+        }*/
         
+        int localidx = 0;
+        glm::vec4 vp = cam.GetViewProjMatrix()[2];
+        std::function<bool(Splat4D*, Splat4D*)> treeSorter = [&vp](Splat4D* nSplat, Splat4D* current)
+        {
+            //glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * (mTime - mPosition.w));
+            float nPosTime = glm::dot(nSplat->GetMeanInTime(), vp);
+            float currentPos = glm::dot(current->GetMeanInTime(), vp);
+            return nPosTime >= currentPos;
+            //return nSplat->GetMeanInTime().z >= current->GetMeanInTime().z;
+        };
+
+        BSPTree<Splat4D> tree{treeSorter, splats4D};
+        std::function<void(Splat4D*)> op = [&localidx, &splatVertexBuffer4D](Splat4D* c)
+        {
+            c->MakeMesh(splatVertexBuffer4D, localidx * SIZE_OF_4_SPLAT4D);
+            localidx += 1;
+        };
+        tree.BackToFront(op);
+
 
         S4DShader.Bind();
         S4DShader.SetUniform1f("uTime", time);

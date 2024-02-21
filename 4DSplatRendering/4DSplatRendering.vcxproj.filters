@@ -152,5 +152,8 @@
     <ClInclude Include="SplatRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="BSPTree.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

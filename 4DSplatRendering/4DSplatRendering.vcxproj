@@ -175,6 +175,7 @@
     <ClInclude Include="..\Dependencies\IMGUI\imstb_rectpack.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_truetype.h" />
+    <ClInclude Include="BSPTree.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DebugMenus.h" />
     <ClInclude Include="Geometry.h" />
