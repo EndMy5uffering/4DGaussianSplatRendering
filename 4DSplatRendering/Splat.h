@@ -414,6 +414,11 @@ public:
         this->mPosition = p;
     }
 
+    glm::mat4 GetGeoInfo() 
+    {
+        return this->mGeoInfo;
+    }
+
 
 private:
     glm::vec4 mColor;

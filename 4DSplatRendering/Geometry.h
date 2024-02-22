@@ -23,6 +23,10 @@ namespace Geometry
         glm::vec4 Color;
     };
 
+    struct Vertex2D {
+        glm::vec2 Position;
+    };
+
     struct Splat4DVertex {
         glm::vec2 VPosition;
         glm::vec4 SPosition;

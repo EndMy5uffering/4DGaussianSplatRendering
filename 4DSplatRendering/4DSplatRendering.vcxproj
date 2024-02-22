@@ -156,6 +156,7 @@
     <ClCompile Include="IndexBuffer.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Shader.cpp" />
+    <ClCompile Include="ShareStorageBuffer.cpp" />
     <ClCompile Include="Splat.cpp" />
     <ClCompile Include="SplatRenderer.cpp" />
     <ClCompile Include="STB_Image.cpp" />
@@ -182,10 +183,12 @@
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="Renderer.h" />
     <ClInclude Include="Shader.h" />
+    <ClInclude Include="ShareStorageBuffer.h" />
     <ClInclude Include="Splat.h" />
     <ClInclude Include="SplatRenderer.h" />
     <ClInclude Include="Texture.h" />
     <ClInclude Include="Utils.h" />
+    <ClInclude Include="VDataParser.h" />
     <ClInclude Include="VertexArray.h" />
     <ClInclude Include="VertexBuffer.h" />
     <ClInclude Include="VertexBufferLayout.h" />

@@ -46,6 +46,10 @@
 
 #include "BSPTree.h"
 
+#include "ShareStorageBuffer.h"
+
+#include "VDataParser.h"
+
 
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
@@ -118,7 +122,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    glfwSwapInterval(0); //Disable vsync
+    //glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -162,6 +166,11 @@ int main(void)
     S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
     S4DShader.AddShaderSource("../Shader/Splats4D/Splat4DVertexShader.GLSL", GL_VERTEX_SHADER);
     S4DShader.BuildShader();
+
+    Shader S4DShaderInstanced;
+    S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
+    S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
+    S4DShaderInstanced.BuildShader();
 
     Splat2D s2d{
         glm::vec3{0,0,0},
@@ -240,7 +249,9 @@ int main(void)
 #endif // SPLAT3D_DRAW
 
 #ifdef SPLAT4D_DRAW
-    const int numOf4DSpltas = 50000;
+    std::vector<glm::mat3> vdata = VData::parse("../Objects/teapot.vdata");
+
+    const int numOf4DSpltas = vdata.size() * 20;
     std::vector<Splat4D> splats4D;
     splats4D.reserve(numOf4DSpltas);
     std::vector<unsigned int> idxBuff4d;
@@ -263,23 +274,25 @@ int main(void)
 
 
     float splat_pos_range = 50;
-    for (int i = 0; i < numOf4DSpltas; ++i)
+    for (int dt = 0; dt < 20; ++dt) 
     {
-        //glm::quat q0 = glm::quatLookAt(glm::vec3{frand(-1.0, 1.0), frand(-1.0, 1.0), frand(-1.0, 1.0)}, glm::vec3{0.0f, 1.0f, 0.0});
-        //glm::quat q1 = glm::quatLookAt(glm::vec3{-q0.x, -q0.y, -q0.z}, glm::vec3{0.0f, 1.0f, 0.0});
-        //glm::vec4 pos, glm::quat rot0, glm::quat rot1, glm::vec4 scalar, glm::vec4 color
-        glm::vec3 pos{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range)};
-        splats4D.push_back(Splat4D{
-            50.0f * glm::normalize(glm::vec4{pos, 0.0f}),
-            glm::normalize(glm::quatLookAt(glm::normalize(pos), glm::vec3(0,1,0))),
-            glm::vec3{2.0,2.0,2.0},
-            500.0f,
-            glm::normalize(pos.x > 0 ? glm::vec3{1.0, 0.0, 0.0} : glm::vec3{-1.0, 0.0, 0.0}) * 500.0f,
-            glm::vec4{frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f}
-            });
+        for (int i = 0; i < vdata.size(); ++i)
+        {
+            //glm::vec3 pos{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), 0};
+            glm::vec3 pos = vdata[i][0];
+            pos.x += dt;
+            splats4D.push_back(Splat4D{
+                5.0f * glm::vec4{pos, dt},
+                glm::normalize(glm::quatLookAt(glm::normalize(vdata[i][1]), glm::vec3(0,1,0))),
+                glm::vec3{2.0,2.0,0.0},
+                20.0f,
+                glm::normalize(glm::vec3{1.0, 0.0, 0.0}) * 20.0f,
+                glm::vec4{frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f}
+                });
 
-        std::vector<unsigned int> idx4D = Splat4D::GetIdxList(i * 4);
-        idxBuff4d.insert(idxBuff4d.end(), std::make_move_iterator(idx4D.begin()), std::make_move_iterator(idx4D.end()));
+            std::vector<unsigned int> idx4D = Splat4D::GetIdxList(i * 4);
+            idxBuff4d.insert(idxBuff4d.end(), std::make_move_iterator(idx4D.begin()), std::make_move_iterator(idx4D.end()));
+        }
     }
     radix_sort::sorter sorter(numOf4DSpltas);
 
@@ -303,6 +316,34 @@ int main(void)
 
     singleSplat4DVA.AddBuffer(singleSplat4DVB, Splat4D::GetBufferLayout());
 
+
+    VertexArray instancedVA{};
+    Geometry::Vertex2D instancedVertices[] = {
+        {{  0.5f,  0.5f }},
+        {{  0.5f, -0.5f }},
+        {{ -0.5f, -0.5f }},
+        {{ -0.5f,  0.5f }},
+    };
+    VertexBuffer instancedVBauffer{ instancedVertices, 4 * sizeof(Geometry::Vertex2D)};
+    const unsigned int instancedIdxBuffer[] = {0,2,1,2,0,3};
+    IndexBuffer instancedSplat4DIB{ instancedIdxBuffer, 6 };
+    VertexBufferLayout instancedBufferLayout{};
+    instancedBufferLayout.Push<glm::vec2>();
+    instancedVA.AddBuffer(instancedVBauffer, instancedBufferLayout);
+    struct SplatData 
+    {
+        glm::vec4 pos;
+        glm::vec4 col;
+        glm::mat4 sig;
+    };
+    std::vector<SplatData> sdata;
+    for (Splat4D &splat : splats4D) 
+    {
+        sdata.push_back({splat.GetPosititon(), splat.GetColor(), splat.GetGeoInfo()});
+    }
+    ShareStorageBuffer ssbo{ sdata.data(), numOf4DSpltas * sizeof(SplatData) };
+    ShareStorageBuffer ssbosortIdxBuffer{ nullptr, numOf4DSpltas * sizeof(GLuint)};
+
 #endif // SPLAT4D_DRAW
 
     double time = 0.0f;
@@ -313,7 +354,7 @@ int main(void)
         /* Render here */
         renderer.Clear();
         cam.HandleInput(window, ImGui::IsAnyItemActive());
-        cam.SetIsViewFixedOnPoint(true, glm::vec4(0.0, 0.0, 0.0, 0.0));
+        //cam.SetIsViewFixedOnPoint(true, glm::vec4(0.0, 0.0, 0.0, 0.0));
 
 
         glEnable(GL_BLEND);
@@ -331,19 +372,13 @@ int main(void)
 #ifdef SPLAT4D_DRAW
 
 
-        /*std::sort(std::begin(idxListForSorting), std::end(idxListForSorting), [&splats4D](unsigned int s0, unsigned int s1) {
-            glm::vec4 proj0 = cam.GetViewProjMatrix() * splats4D[s0].GetMeanInTime();
-            glm::vec4 proj1 = cam.GetViewProjMatrix() * splats4D[s1].GetMeanInTime();
-            return proj0.w > proj1.w;
-        });*/
-        /**/std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
+        std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
         std::vector<GLfloat> val_buffer_data_pre(numOf4DSpltas);
         for (int i = 0; i < numOf4DSpltas; ++i)
         {
             //splats4D[i].SetTime(time);
             key_buffer_data_pre[i] = i;
-            glm::vec4 tmp = splats4D[i].GetMeanInTime() - glm::vec4(cam.GetPosition(), 1);
-            val_buffer_data_pre[i] = tmp.x + tmp.y + tmp.z;
+            val_buffer_data_pre[i] = glm::length(splats4D[i].GetMeanInTime() - glm::vec4(cam.GetPosition(), 1));
         }
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf);
@@ -354,16 +389,16 @@ int main(void)
 
         sorter.sort(values_buf, key_buf, numOf4DSpltas);
 
-        std::vector<GLuint> key_buf_data(numOf4DSpltas);
-        GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf));
-        GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLuint), key_buf_data.data()));
-
-        int localidx = 0;
+        //std::vector<GLuint> key_buf_data(numOf4DSpltas);
+        //GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf));
+        //GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLuint), key_buf_data.data()));
+        //ssbosortIdxBuffer.SubData(0, (void*)key_buf_data.data(), numOf4DSpltas * sizeof(GLuint));
+        /*int localidx = 0;
         for(size_t i = key_buf_data.size()-1; i != -1; --i)
         {
             splats4D[key_buf_data[i]].MakeMesh(splatVertexBuffer4D, localidx * SPLAT4D_4_VERTEX_SIZE);
             localidx += 1;
-        }
+        }*/
         
         /*int localidx = 0;
         glm::vec4 campos = glm::vec4{ cam.GetPosition() , 1};
@@ -389,12 +424,17 @@ int main(void)
         tree.BackToFront(op);*/
         
 
-        S4DShader.Bind();
-        S4DShader.SetUniform1f("uTime", time);
-        S4DShader.SetUniformMat4f("uView", cam.GetViewMatrix());
-        S4DShader.SetUniformMat4f("uProj", cam.GetProjMatrix());
+        S4DShaderInstanced.Bind();
+        S4DShaderInstanced.SetUniform1f("uTime", time);
+        S4DShaderInstanced.SetUniformMat4f("uView", cam.GetViewMatrix());
+        S4DShaderInstanced.SetUniformMat4f("uProj", cam.GetProjMatrix());
 
-        renderer.Draw(splatVertexArray4D, splatIdxBuffer4D);
+        GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, key_buf));
+        //ssbosortIdxBuffer.Bind(1);
+        ssbo.Bind(2);
+
+        //renderer.Draw(splatVertexArray4D, splatIdxBuffer4D);
+        renderer.Draw(instancedVA, instancedSplat4DIB, numOf4DSpltas);
 
 
         //s4d.SetTime(time);
