@@ -19,6 +19,8 @@ private:
 
 	std::function<bool(T*, T*)>& mIsBigger;
 	BSPNode* root = nullptr;
+	BSPNode* mPrealloc = nullptr;
+	size_t mNextPtr = 0;
 
 	void AddRecursive(T* element, BSPNode* root);
 	void AddLin(T* element, BSPNode* root);
@@ -27,6 +29,8 @@ private:
 	void BackToFrontRec(std::function<void(T* e)>& op, BSPNode* current);
 	void FrontToBackRec(std::function<void(T* e)>& op, BSPNode* current);
 
+	BSPNode* GetNew();
+
 public:
 
 	BSPTree(std::function<bool(T*, T*)>& sorter)
@@ -34,6 +38,15 @@ public:
 		mIsBigger{sorter}
 	{
 		root = new BSPNode(); //cursed ... i know
+
+	}
+
+	BSPTree(std::function<bool(T*, T*)>& sorter, size_t preAllocSize)
+		:
+		mIsBigger{ sorter }
+	{
+		root = new BSPNode(); //cursed ... i know
+		mPrealloc = (BSPNode*) malloc(preAllocSize * sizeof(BSPNode));
 	}
 
 	BSPTree(std::function<bool(T*, T*)>& sorter, std::vector<T>& elements)
@@ -41,7 +54,9 @@ public:
 		mIsBigger{ sorter }
 	{
 		root = new BSPNode(); //cursed ... i know
+
 		Add(elements);
+
 	}
 
 	~BSPTree();
@@ -51,6 +66,8 @@ public:
 	
 	void BackToFront(std::function<void(T* e)>& op);
 	void FrontToBack(std::function<void(T* e)>& op);
+
+	void DiscardAndRealloc(size_t preAllocSize);
 
 };
 
@@ -82,6 +99,12 @@ inline void BSPTree<T>::AddLin(T* element, BSPNode* root)
 	
 	BSPNode* prev = root;
 	BSPNode* current = root;
+
+	if (!current->mElement) 
+	{
+		root->mElement = element;
+		return;
+	}
 
 	while (true) 
 	{
@@ -195,4 +218,13 @@ template<typename T>
 inline void BSPTree<T>::FrontToBack(std::function<void(T* e)>& op)
 {
 	FrontToBackRec(op, this->root);
+}
+
+template<typename T>
+inline void BSPTree<T>::DiscardAndRealloc(size_t preAllocSize)
+{
+	delete mPrealloc;
+	mPrealloc = nullptr;
+	mNextPtr = 0;
+	mPrealloc = (BSPNode*)malloc(preAllocSize * sizeof(BSPNode));
 }

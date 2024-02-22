@@ -240,7 +240,7 @@ int main(void)
 #endif // SPLAT3D_DRAW
 
 #ifdef SPLAT4D_DRAW
-    const int numOf4DSpltas = 5000;
+    const int numOf4DSpltas = 50000;
     std::vector<Splat4D> splats4D;
     splats4D.reserve(numOf4DSpltas);
     std::vector<unsigned int> idxBuff4d;
@@ -272,7 +272,7 @@ int main(void)
         splats4D.push_back(Splat4D{
             50.0f * glm::normalize(glm::vec4{pos, 0.0f}),
             glm::normalize(glm::quatLookAt(glm::normalize(pos), glm::vec3(0,1,0))),
-            glm::vec3{20.0,20.0,20.0},
+            glm::vec3{2.0,2.0,2.0},
             500.0f,
             glm::normalize(pos.x > 0 ? glm::vec3{1.0, 0.0, 0.0} : glm::vec3{-1.0, 0.0, 0.0}) * 500.0f,
             glm::vec4{frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f}
@@ -285,7 +285,8 @@ int main(void)
 
     VertexArray splatVertexArray4D{};
     VertexBuffer splatVertexBuffer4D{ nullptr, (unsigned int)splats4D.size() * SIZE_OF_4_SPLAT4D };
-    IndexBuffer splatIdxBuffer4D{ idxBuff4d.data(), (unsigned int)idxBuff4d.size() };
+    IndexBuffer splatIdxBuffer4D{ nullptr, (unsigned int)idxBuff4d.size() };
+    splatIdxBuffer4D.SubData(0, idxBuff4d.data(), (unsigned int)idxBuff4d.size() * sizeof(unsigned int));
     splatVertexArray4D.AddBuffer(splatVertexBuffer4D, Splat4D::GetBufferLayout());
 
     for (int i = 0; i < splats4D.size(); ++i)
@@ -335,13 +336,14 @@ int main(void)
             glm::vec4 proj1 = cam.GetViewProjMatrix() * splats4D[s1].GetMeanInTime();
             return proj0.w > proj1.w;
         });*/
-        /*std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
+        /**/std::vector<GLuint> key_buffer_data_pre(numOf4DSpltas);
         std::vector<GLfloat> val_buffer_data_pre(numOf4DSpltas);
         for (int i = 0; i < numOf4DSpltas; ++i)
         {
-            splats4D[i].SetTime(time);
+            //splats4D[i].SetTime(time);
             key_buffer_data_pre[i] = i;
-            val_buffer_data_pre[i] = (cam.GetViewProjMatrix() * splats4D[i].GetMeanInTime()).z;
+            glm::vec4 tmp = splats4D[i].GetMeanInTime() - glm::vec4(cam.GetPosition(), 1);
+            val_buffer_data_pre[i] = tmp.x + tmp.y + tmp.z;
         }
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf);
@@ -353,28 +355,29 @@ int main(void)
         sorter.sort(values_buf, key_buf, numOf4DSpltas);
 
         std::vector<GLuint> key_buf_data(numOf4DSpltas);
-        std::vector<GLfloat> val_buf_data(numOf4DSpltas);
         GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf));
         GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLuint), key_buf_data.data()));
-        GLCall(glBindBuffer(GL_SHADER_STORAGE_BUFFER, values_buf));
-        GLCall(glGetBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, numOf4DSpltas * sizeof(GLfloat), val_buf_data.data()));
 
         int localidx = 0;
         for(size_t i = key_buf_data.size()-1; i != -1; --i)
         {
-            splats4D[key_buf_data[i]].MakeMesh(splatVertexBuffer4D, localidx * 4 * sizeof(Geometry::Splat4DVertex));
+            splats4D[key_buf_data[i]].MakeMesh(splatVertexBuffer4D, localidx * SPLAT4D_4_VERTEX_SIZE);
             localidx += 1;
-        }*/
+        }
         
-        int localidx = 0;
-        glm::vec4 vp = cam.GetViewProjMatrix()[2];
-        std::function<bool(Splat4D*, Splat4D*)> treeSorter = [&vp](Splat4D* nSplat, Splat4D* current)
+        /*int localidx = 0;
+        glm::vec4 campos = glm::vec4{ cam.GetPosition() , 1};
+        std::function<bool(Splat4D*, Splat4D*)> treeSorter = [&campos](Splat4D* nSplat, Splat4D* current)
         {
             //glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * (mTime - mPosition.w));
-            float nPosTime = glm::dot(nSplat->GetMeanInTime(), vp);
-            float currentPos = glm::dot(current->GetMeanInTime(), vp);
-            return nPosTime >= currentPos;
-            //return nSplat->GetMeanInTime().z >= current->GetMeanInTime().z;
+            //float nPosTime = glm::dot(nSplat->GetMeanInTime(), vp);
+            //float currentPos = glm::dot(current->GetMeanInTime(), vp);
+            //return nPosTime >= currentPos;
+            glm::vec4 tmp0 = nSplat->GetMeanInTime() - campos;
+            glm::vec4 tmp1 = current->GetMeanInTime() - campos;
+            return  tmp0.x + tmp0.y + tmp0.z >= tmp1.x + tmp1.y + tmp1.z;
+            //return true;
+
         };
 
         BSPTree<Splat4D> tree{treeSorter, splats4D};
@@ -383,8 +386,8 @@ int main(void)
             c->MakeMesh(splatVertexBuffer4D, localidx * SIZE_OF_4_SPLAT4D);
             localidx += 1;
         };
-        tree.BackToFront(op);
-
+        tree.BackToFront(op);*/
+        
 
         S4DShader.Bind();
         S4DShader.SetUniform1f("uTime", time);

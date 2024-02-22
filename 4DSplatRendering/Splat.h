@@ -341,14 +341,18 @@ public:
 
     inline void MakeMesh(VertexBuffer& vb, unsigned int offset)
     {
-        std::vector<Geometry::Splat4DVertex> vertices;
-        vertices.reserve(4);
-        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+        if (mverts.size() <= 0)
+        {
+            std::vector<Geometry::Splat4DVertex> vertices;
+            vertices.reserve(4);
+            vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+            vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+            vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
+            vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
+            mverts = vertices;
+        }
 
-        vb.SubData(offset, vertices.data(), SPLAT4D_4_VERTEX_SIZE);
+        vb.SubData(offset, mverts.data(), SPLAT4D_4_VERTEX_SIZE);
     }
 
     static inline std::vector<unsigned int> GetIdxList(unsigned int offset) 
@@ -417,6 +421,7 @@ private:
     glm::vec3 mTimePos;
     glm::mat4 mGeoInfo;
     glm::vec3 mDir;
+    std::vector<Geometry::Splat4DVertex> mverts;
     float mTime = 0.0f;
 };
 
