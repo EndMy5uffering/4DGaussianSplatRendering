@@ -1,6 +1,6 @@
 #version 440 core
 
-#define iData data[sortidx[sortidx.length() - gl_InstanceID]]
+#define iData data[sortidx[gl_InstanceID]]
 
 struct SplatData
 {

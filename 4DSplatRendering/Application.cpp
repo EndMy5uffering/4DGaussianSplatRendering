@@ -98,6 +98,21 @@ void updateScreenSize(GLFWwindow* window, int width, int height)
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
 
+//fast inverse sqrt from doom
+float q_rsqrt(float number)
+{
+    long i;
+    float x2, y;
+    const float threehalfs = 1.5F;
+    x2 = number * 0.5F;
+    y = number;
+    i = *(long*)&y;
+    i = 0x5f3759df - (i >> 1);
+    y = *(float*)&i;
+    y = y * (threehalfs - (x2 * y * y)); 
+    return y;
+}
+
 int main(void)
 {
     GLFWwindow* window;
@@ -122,7 +137,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    //glfwSwapInterval(0); //Disable vsync
+    glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -251,7 +266,7 @@ int main(void)
 #ifdef SPLAT4D_DRAW
     std::vector<glm::mat3> vdata = VData::parse("../Objects/teapot.vdata");
 
-    const int numOf4DSpltas = vdata.size() * 20;
+    const int numOf4DSpltas = vdata.size() * 45;
     std::vector<Splat4D> splats4D;
     splats4D.reserve(numOf4DSpltas);
     std::vector<unsigned int> idxBuff4d;
@@ -274,19 +289,19 @@ int main(void)
 
 
     float splat_pos_range = 50;
-    for (int dt = 0; dt < 20; ++dt) 
+    for (int dt = 0; dt < 45; ++dt) 
     {
         for (int i = 0; i < vdata.size(); ++i)
         {
             //glm::vec3 pos{frand(-splat_pos_range, splat_pos_range), frand(-splat_pos_range, splat_pos_range), 0};
-            glm::vec3 pos = vdata[i][0];
-            pos.x += dt;
+            glm::vec3 pos = glm::rotate(vdata[i][0], glm::radians(float(dt * 8)), glm::vec3(0, 1, 0));//vdata[i][0];
+            //pos.x += dt;
             splats4D.push_back(Splat4D{
                 5.0f * glm::vec4{pos, dt},
                 glm::normalize(glm::quatLookAt(glm::normalize(vdata[i][1]), glm::vec3(0,1,0))),
-                glm::vec3{2.0,2.0,0.0},
-                20.0f,
-                glm::normalize(glm::vec3{1.0, 0.0, 0.0}) * 20.0f,
+                glm::vec3{2.0,2.0,2.0},
+                5.0f,
+                glm::vec3{0.0, 1.0, 0.0} * 1.0f,
                 glm::vec4{frand(0.0f, 1.0f), frand(0.0f, 1.0f), frand(0.0f, 1.0f), 1.0f}
                 });
 
@@ -344,6 +359,15 @@ int main(void)
     ShareStorageBuffer ssbo{ sdata.data(), numOf4DSpltas * sizeof(SplatData) };
     ShareStorageBuffer ssbosortIdxBuffer{ nullptr, numOf4DSpltas * sizeof(GLuint)};
 
+    std::vector<GLuint> sortidxlist;
+    for (int i = 0; i < numOf4DSpltas; i++)
+    {
+        sortidxlist.push_back(i);
+    }
+    ssbosortIdxBuffer.SubData(0, (void*)sortidxlist.data(), numOf4DSpltas * sizeof(GLuint));
+
+    std::cout << "number of splats: " << splats4D.size() << "\n";
+
 #endif // SPLAT4D_DRAW
 
     double time = 0.0f;
@@ -361,7 +385,7 @@ int main(void)
         glDisable(GL_DEPTH_TEST);
         glBlendFunc(blendOpt.selected0, blendOpt.selected1);
 
-
+        renderer.DrawGrid(2000, 2000, 200, 200, {1,1,1,0.15}, cam, 1);
         renderer.DrawAxis(cam, 500.0f, 3.0f);
         renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
 
@@ -378,7 +402,8 @@ int main(void)
         {
             //splats4D[i].SetTime(time);
             key_buffer_data_pre[i] = i;
-            val_buffer_data_pre[i] = glm::length(splats4D[i].GetMeanInTime() - glm::vec4(cam.GetPosition(), 1));
+            glm::vec4 tmp = splats4D[i].GetMeanInTime() - glm::vec4(cam.GetPosition(), 1);
+            val_buffer_data_pre[i] = q_rsqrt(tmp.x*tmp.x + tmp.y*tmp.y + tmp.z*tmp.z);
         }
 
         glBindBuffer(GL_SHADER_STORAGE_BUFFER, key_buf);
