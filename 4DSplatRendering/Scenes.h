@@ -90,6 +90,11 @@ namespace Scenes
         float m_lin_time_multiplyer = 1.0f;
         int m_steps_in_time = 50;
 
+        float m_object_scale = 5.0f;
+        float m_splat_scale_x = 1.0f;
+        float m_splat_scale_y = 1.0f;
+        float m_splat_scale_z = 1.0f;
+
         bool m_loop = true;
         bool m_doTime = false;
         bool m_SceneMenu = false;
@@ -133,9 +138,9 @@ namespace Scenes
                     glm::vec3 dir{1.0, 0.0, 0.0};
                     glm::vec3 timeOffset = dir * float(dt * m_lin_time_multiplyer);
                     Splat4D s4d{
-                        glm::vec4{(5.0f * pos) + timeOffset, float(dt)},
+                        glm::vec4{(m_object_scale * pos) + timeOffset, float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
-                        glm::vec3{1.0,1.0,1.0},
+                        glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         glm::normalize(dir) * m_Splat_Speed,
@@ -243,6 +248,15 @@ namespace Scenes
             ImGui::InputFloat("m_lin_time_multiplyer", &m_lin_time_multiplyer);
             ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
 
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
+            ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
+            ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
+            ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
+
             if (ImGui::Button("Reload Scene"))
             {
                 unload();
@@ -283,6 +297,11 @@ namespace Scenes
         float m_rotation_radius = 20.0f;
         float m_angle_multiplyer = 4.0f;
         int m_steps_in_time = 92;
+
+        float m_object_scale = 5.0f;
+        float m_splat_scale_x = 1.0f;
+        float m_splat_scale_y = 1.0f;
+        float m_splat_scale_z = 1.0f;
 
         bool m_loop = true;
         bool m_doTime = false;
@@ -328,9 +347,9 @@ namespace Scenes
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(forward, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(forward, glm::radians(float((dt+1)* m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     Splat4D s4d{
-                        glm::vec4{(5.0f * pos) + (timeOffset * m_rotation_radius), float(dt)},
+                        glm::vec4{(m_object_scale * pos) + (timeOffset * m_rotation_radius), float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
-                        glm::vec3{1.0,1.0,1.0},
+                        glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         (timeOffset_next - timeOffset) * m_Splat_Speed,
@@ -441,6 +460,15 @@ namespace Scenes
             ImGui::InputFloat("m_angle_multiplyer", &m_angle_multiplyer);
             ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
 
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
+            ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
+            ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
+            ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
+
             if (ImGui::Button("Reload Scene")) 
             {
                 unload();
@@ -482,6 +510,11 @@ namespace Scenes
         float m_rotation_radius = 20.0f;
         float m_angle_multiplyer = 4.0f;
         int m_steps_in_time = 92;
+
+        float m_object_scale = 5.0f;
+        float m_splat_scale_x = 1.0f;
+        float m_splat_scale_y = 1.0f;
+        float m_splat_scale_z = 1.0f;
 
         bool m_loop = true;
         bool m_doTime = false;
@@ -526,9 +559,9 @@ namespace Scenes
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(pos, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(pos, glm::radians(float((dt + 1) * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     Splat4D s4d{
-                        glm::vec4{(5.0f * timeOffset), float(dt)},
+                        glm::vec4{(m_object_scale * timeOffset), float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
-                        glm::vec3{1.0,1.0,1.0},
+                        glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         (timeOffset_next - timeOffset) * m_Splat_Speed,
@@ -637,6 +670,15 @@ namespace Scenes
             ImGui::InputFloat("m_rotation_radius", &m_rotation_radius);
             ImGui::InputFloat("m_angle_multiplyer", &m_angle_multiplyer);
             ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
+            ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
+            ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
+            ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
 
             if (ImGui::Button("Reload Scene"))
             {
