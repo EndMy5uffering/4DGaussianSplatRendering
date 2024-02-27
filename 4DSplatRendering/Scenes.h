@@ -26,14 +26,14 @@ namespace Scenes
     {
 
     public:
-        Empty()
+        Empty(Renderer& r, Camera& c) : Scene(r, c)
         {
         }
         ~Empty()
         {
         }
 
-        void init(Renderer& renderer, Camera& cam) override
+        void init() override
         {
             std::cout << "Init: Scenes::Empty\n";
             std::cout << "Done Init: Scenes::Empty\n";
@@ -45,12 +45,12 @@ namespace Scenes
             std::cout << "Done unloading Scenes::Empty\n";
         }
 
-        void Render(Renderer& renderer, Camera& cam) override
+        void Render() override
         {
 
-            renderer.DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, cam, 1);
-            renderer.DrawAxis(cam, 500.0f, 3.0f);
-            renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+            GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
         }
 
@@ -58,6 +58,8 @@ namespace Scenes
         {
 
         }
+
+        void GUI() override {}
     };
 
 
@@ -81,11 +83,19 @@ namespace Scenes
 
         float m_time = 0.0f;
         float m_time_speed = 0.25f;
+        float m_max_time = 50.0f;
+        float m_Splat_Speed = 1.0f;
+        float m_splat_lifetime = 1.0f;
+        float m_splat_fade_offset = 0.5f;
+        float m_lin_time_multiplyer = 1.0f;
+        int m_steps_in_time = 50;
 
-        bool doTime = false;
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
 
     public:
-        LinearMotion()
+        LinearMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
@@ -97,14 +107,13 @@ namespace Scenes
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
         }
 
-        void init(Renderer& renderer, Camera& cam) override
+        void init() override
         {
-            cam.SetPosition({60, 90, 90});
-            cam.SetOrientation({ 0, -1.0, -1.0 });
-            int steps_in_time = 50;
+            GetCamera().SetPosition({60, 90, 90});
+            GetCamera().SetOrientation({ 0, -1.0, -1.0 });
             std::cout << "Initializing Scene: Linear Motion\n";
             m_vModelData = VData::parse("../Objects/teapot.vdata");
-            m_numOf4DSpltas = m_vModelData.size() * steps_in_time;
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
@@ -116,21 +125,20 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-            for (int dt = 0; dt < steps_in_time; ++dt)
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float speed = 2.0f;
                     glm::vec3 pos = m_vModelData[i][0];
                     glm::vec3 dir{1.0, 0.0, 0.0};
-                    glm::vec3 timeOffset = dir * float(dt * speed);
+                    glm::vec3 timeOffset = dir * float(dt * m_lin_time_multiplyer);
                     Splat4D s4d{
                         glm::vec4{(5.0f * pos) + timeOffset, float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
                         glm::vec3{1.0,1.0,1.0},
-                        1.0f,
-                        0.5f,
-                        glm::normalize(dir) * speed,
+                        m_splat_lifetime,
+                        m_splat_fade_offset,
+                        glm::normalize(dir) * m_Splat_Speed,
                         glm::clamp(glm::vec4{0.1 + pos.x / 15.0, 0.1 + pos.y / 15.0, 0.1 + pos.z / 15.0, 1.0f},
                             {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
                     };
@@ -154,11 +162,11 @@ namespace Scenes
             std::cout << "Done unloading Scene: Linear Motion\n";
         }
 
-        void Render(Renderer& renderer, Camera& cam) override
+        void Render() override
         {
-            renderer.DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, cam, 1);
-            renderer.DrawAxis(cam, 500.0f, 3.0f);
-            renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+            GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
 
             std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
@@ -166,7 +174,7 @@ namespace Scenes
             for (int i = 0; i < m_numOf4DSpltas; ++i)
             {
                 key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(cam.GetPosition(), 1);
+                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
                 val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
             }
 
@@ -181,24 +189,70 @@ namespace Scenes
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
-            m_S4DShaderInstanced.SetUniformMat4f("uView", cam.GetViewMatrix());
-            m_S4DShaderInstanced.SetUniformMat4f("uProj", cam.GetProjMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
             GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
             m_ssbo_splat_data->Bind(2);
 
-            renderer.Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
         }
 
         void Update(GLFWwindow* hwin) override
         {
-            if (glfwGetKey(hwin, GLFW_KEY_0) == GLFW_PRESS) doTime = true;
-            if (glfwGetKey(hwin, GLFW_KEY_9) == GLFW_PRESS) doTime = false;
-            if (glfwGetKey(hwin, GLFW_KEY_8) == GLFW_PRESS) m_time = 0.0;
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
 
-            if (m_time > 50 || m_time < 0) m_time_speed *= -1;
-            if (doTime) m_time += m_time_speed;
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop)
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
         }
+
+        void GUI() override
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Linear Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+
+            ImGui::NewLine();
+
+
+            if (ImGui::Button("Run"))
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputFloat("m_lin_time_multiplyer", &m_lin_time_multiplyer);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+
+            if (ImGui::Button("Reload Scene"))
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
     };
 
     class NonLinearMotion : public Scene
@@ -221,12 +275,21 @@ namespace Scenes
         const Geometry::Quad quad;
 
         float m_time = 0.0f;
+        float m_max_time = 90.0f;
         float m_time_speed = 0.25f;
+        float m_Splat_Speed = 20.0f;
+        float m_splat_lifetime = 1.0f;
+        float m_splat_fade_offset = 0.5f;
+        float m_rotation_radius = 20.0f;
+        float m_angle_multiplyer = 4.0f;
+        int m_steps_in_time = 92;
 
-        bool doTime = false;
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
 
     public:
-        NonLinearMotion()
+        NonLinearMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
@@ -238,14 +301,13 @@ namespace Scenes
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
         }
 
-        void init(Renderer& renderer, Camera& cam) override
+        void init() override
         {
-            cam.SetPosition({ 0, 60, 60 });
-            cam.SetOrientation({ 0.0, -1.0, -1.0 });
-            int steps_in_time = 92;
+            GetCamera().SetPosition({ 0, 60, 60 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
             std::cout << "Init: Scenes::NonLinearMotion\n";
             m_vModelData = VData::parse("../Objects/teapot.vdata");
-            m_numOf4DSpltas = m_vModelData.size() * steps_in_time;
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
@@ -257,22 +319,21 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-            for (int dt = 0; dt < steps_in_time; ++dt)
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float speed = 20.0f;
                     glm::vec3 pos = m_vModelData[i][0];
                     glm::vec4 forward{ 1.0, 0.0, 0.0, 0.0 };
-                    glm::vec3 timeOffset = glm::vec3{ glm::rotate(forward, glm::radians(float(dt * 4.0f)), {0.0, 1.0, 0.0}) };
-                    glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(forward, glm::radians(float((dt+1)*4.0f)), {0.0, 1.0, 0.0}) };
+                    glm::vec3 timeOffset = glm::vec3{ glm::rotate(forward, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
+                    glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(forward, glm::radians(float((dt+1)* m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     Splat4D s4d{
-                        glm::vec4{(5.0f * pos) + (timeOffset * 20.0f), float(dt)},
+                        glm::vec4{(5.0f * pos) + (timeOffset * m_rotation_radius), float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
                         glm::vec3{1.0,1.0,1.0},
-                        1.0f,
-                        0.5f,
-                        (timeOffset_next - timeOffset) * speed,
+                        m_splat_lifetime,
+                        m_splat_fade_offset,
+                        (timeOffset_next - timeOffset) * m_Splat_Speed,
                         glm::clamp(glm::vec4{0.1 + pos.x / 15.0, 0.1 + pos.y / 15.0, 0.1 + pos.z / 15.0, 1.0f},
                             {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
                     };
@@ -296,12 +357,12 @@ namespace Scenes
             std::cout << "Done unloading Scenes::NonLinearMotion\n";
         }
 
-        void Render(Renderer& renderer, Camera& cam) override
+        void Render() override
         {
 
-            renderer.DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, cam, 1);
-            renderer.DrawAxis(cam, 500.0f, 3.0f);
-            renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+            GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
 
             std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
@@ -309,7 +370,7 @@ namespace Scenes
             for (int i = 0; i < m_numOf4DSpltas; ++i)
             {
                 key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(cam.GetPosition(), 1);
+                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
                 val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
             }
 
@@ -324,24 +385,72 @@ namespace Scenes
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
-            m_S4DShaderInstanced.SetUniformMat4f("uView", cam.GetViewMatrix());
-            m_S4DShaderInstanced.SetUniformMat4f("uProj", cam.GetProjMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
             GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
             m_ssbo_splat_data->Bind(2);
 
-            renderer.Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+
         }
 
         void Update(GLFWwindow* hwin) override
         {
-            if (glfwGetKey(hwin, GLFW_KEY_0) == GLFW_PRESS) doTime = true;
-            if (glfwGetKey(hwin, GLFW_KEY_9) == GLFW_PRESS) doTime = false;
-            if (glfwGetKey(hwin, GLFW_KEY_8) == GLFW_PRESS) m_time = 0.0;
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
 
-            if (doTime) m_time += m_time_speed;
-            if (m_time > 90) m_time = 0;
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop) 
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
         }
+
+        void GUI() override 
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Non Linear Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+
+            ImGui::NewLine();
+
+
+            if (ImGui::Button("Run")) 
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputFloat("m_rotation_radius", &m_rotation_radius);
+            ImGui::InputFloat("m_angle_multiplyer", &m_angle_multiplyer);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+
+            if (ImGui::Button("Reload Scene")) 
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
     };
 
 
@@ -365,12 +474,21 @@ namespace Scenes
         const Geometry::Quad quad;
 
         float m_time = 0.0f;
+        float m_max_time = 90.0f;
         float m_time_speed = 0.25f;
+        float m_Splat_Speed = 5.0f;
+        float m_splat_lifetime = 0.6f;
+        float m_splat_fade_offset = 0.5f;
+        float m_rotation_radius = 20.0f;
+        float m_angle_multiplyer = 4.0f;
+        int m_steps_in_time = 92;
 
-        bool doTime = false;
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
 
     public:
-        RotationMotion()
+        RotationMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
@@ -382,14 +500,13 @@ namespace Scenes
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
         }
 
-        void init(Renderer& renderer, Camera& cam) override
+        void init() override
         {
-            cam.SetPosition({ 0, 60, 30 });
-            cam.SetOrientation({ 0.0, -1.0, -0.5 });
-            int steps_in_time = 92;
+            GetCamera().SetPosition({ 0, 60, 30 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -0.5 });
             std::cout << "Init: Scenes::RotationMotion\n";
             m_vModelData = VData::parse("../Objects/teapot.vdata");
-            m_numOf4DSpltas = m_vModelData.size() * steps_in_time;
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
@@ -401,21 +518,20 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-            for (int dt = 0; dt < steps_in_time; ++dt)
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float speed = 5.0f;
                     glm::vec4 pos{ m_vModelData[i][0], 0.0 };
-                    glm::vec3 timeOffset = glm::vec3{ glm::rotate(pos, glm::radians(float(dt * 4.0f)), {0.0, 1.0, 0.0}) };
-                    glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(pos, glm::radians(float((dt + 1) * 4.0f)), {0.0, 1.0, 0.0}) };
+                    glm::vec3 timeOffset = glm::vec3{ glm::rotate(pos, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
+                    glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(pos, glm::radians(float((dt + 1) * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     Splat4D s4d{
                         glm::vec4{(5.0f * timeOffset), float(dt)},
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
                         glm::vec3{1.0,1.0,1.0},
-                        0.6f,
-                        0.5f,
-                        (timeOffset_next - timeOffset) * speed,
+                        m_splat_lifetime,
+                        m_splat_fade_offset,
+                        (timeOffset_next - timeOffset) * m_Splat_Speed,
                         glm::clamp(glm::vec4{0.1 + pos.x / 15.0, 0.1 + pos.y / 15.0, 0.1 + pos.z / 15.0, 1.0f},
                             {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
                     };
@@ -439,12 +555,12 @@ namespace Scenes
             std::cout << "Done unloading Scenes::RotationMotion\n";
         }
 
-        void Render(Renderer& renderer, Camera& cam) override
+        void Render() override
         {
 
-            renderer.DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, cam, 1);
-            renderer.DrawAxis(cam, 500.0f, 3.0f);
-            renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+            GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
 
             std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
@@ -452,7 +568,7 @@ namespace Scenes
             for (int i = 0; i < m_numOf4DSpltas; ++i)
             {
                 key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(cam.GetPosition(), 1);
+                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
                 val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
             }
 
@@ -467,24 +583,71 @@ namespace Scenes
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
-            m_S4DShaderInstanced.SetUniformMat4f("uView", cam.GetViewMatrix());
-            m_S4DShaderInstanced.SetUniformMat4f("uProj", cam.GetProjMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
             GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
             m_ssbo_splat_data->Bind(2);
 
-            renderer.Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
         }
 
         void Update(GLFWwindow* hwin) override
         {
-            if (glfwGetKey(hwin, GLFW_KEY_0) == GLFW_PRESS) doTime = true;
-            if (glfwGetKey(hwin, GLFW_KEY_9) == GLFW_PRESS) doTime = false;
-            if (glfwGetKey(hwin, GLFW_KEY_8) == GLFW_PRESS) m_time = 0.0;
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
 
-            if (doTime) m_time += m_time_speed;
-            if (m_time > 90) m_time = 0;
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop)
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
         }
+
+        void GUI() override
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Rotation Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+
+            ImGui::NewLine();
+
+
+            if (ImGui::Button("Run"))
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputFloat("m_rotation_radius", &m_rotation_radius);
+            ImGui::InputFloat("m_angle_multiplyer", &m_angle_multiplyer);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+
+            if (ImGui::Button("Reload Scene"))
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
     };
 
     class CombinedMotion : public Scene
@@ -512,7 +675,7 @@ namespace Scenes
         bool doTime = false;
 
     public:
-        CombinedMotion()
+        CombinedMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
@@ -524,10 +687,10 @@ namespace Scenes
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
         }
 
-        void init(Renderer& renderer, Camera& cam) override
+        void init() override
         {
-            cam.SetPosition({ 50, 90, 90 });
-            cam.SetOrientation({ 0.0, -1.0, -1.0 });
+            GetCamera().SetPosition({ 50, 90, 90 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
             int steps_in_time = 92;
             std::cout << "Init: Scenes::RotationMotion\n";
             m_vModelData = VData::parse("../Objects/teapot.vdata");
@@ -583,12 +746,12 @@ namespace Scenes
             std::cout << "Done unloading Scenes::RotationMotion\n";
         }
 
-        void Render(Renderer& renderer, Camera& cam) override
+        void Render() override
         {
 
-            renderer.DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, cam, 1);
-            renderer.DrawAxis(cam, 500.0f, 3.0f);
-            renderer.DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, cam, 5.0f);
+            GetRenderer().DrawGrid(2000, 2000, 200, 200, {1,1,1,0.15}, GetCamera(), 1);
+            GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
 
             std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
@@ -596,7 +759,7 @@ namespace Scenes
             for (int i = 0; i < m_numOf4DSpltas; ++i)
             {
                 key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(cam.GetPosition(), 1);
+                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
                 val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
             }
 
@@ -611,13 +774,13 @@ namespace Scenes
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
-            m_S4DShaderInstanced.SetUniformMat4f("uView", cam.GetViewMatrix());
-            m_S4DShaderInstanced.SetUniformMat4f("uProj", cam.GetProjMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
             GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
             m_ssbo_splat_data->Bind(2);
 
-            renderer.Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
         }
 
         void Update(GLFWwindow* hwin) override
@@ -629,6 +792,10 @@ namespace Scenes
             if (doTime) m_time += m_time_speed;
             if (m_time > 90) m_time = 0;
         }
+
+        void GUI() override {}
+
+
     };
 
 }

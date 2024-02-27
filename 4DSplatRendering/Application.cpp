@@ -164,8 +164,8 @@ int main(void)
 
     DebugMenus::MenueStripData menueStripData;
     menueStripData.cam = &cam;
-    menueStripData.u_scene_ptr = std::make_unique<Scenes::Empty>();
-    menueStripData.u_scene_ptr->init(renderer, cam);
+    menueStripData.u_scene_ptr = std::make_unique<Scenes::Empty>(renderer, cam);
+    menueStripData.u_scene_ptr->init();
 
 
     while (!glfwWindowShouldClose(window))
@@ -182,7 +182,7 @@ int main(void)
         if (menueStripData.u_scene_ptr)
         {
             menueStripData.u_scene_ptr->Update(window);
-            menueStripData.u_scene_ptr->Render(renderer, cam);
+            menueStripData.u_scene_ptr->Render();
         }
         
         glDisable(GL_BLEND);
@@ -198,6 +198,11 @@ int main(void)
         DebugMenus::CamInfo(io, cam, &menueStripData.show_CamInfo);
         DebugMenus::MainMenuStrip(&menueStripData, renderer, cam);
         //IMGUI
+
+        if (menueStripData.u_scene_ptr) 
+        {
+            menueStripData.u_scene_ptr->GUI();
+        }
 
         ImGui::Render();
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());

@@ -21,8 +21,8 @@
                     data->u_scene_ptr->unload();\
                     data->u_scene_ptr.reset();\
                 }\
-                data->u_scene_ptr = std::make_unique<SType>();\
-                data->u_scene_ptr->init(renderer, cam); }
+                data->u_scene_ptr = std::make_unique<SType>(renderer, cam);\
+                data->u_scene_ptr->init(); }
 
 constexpr float RAD_RANGE = 2.0f * 3.1415926535f;
 
@@ -112,9 +112,6 @@ namespace DebugMenus
         if (!*is_Showing) return;
 
         ImGui::Begin("Cam Info", is_Showing);
-        float camSpeed = cam.GetSpeed();
-        ImGui::SliderFloat("Speed", &camSpeed, 0.0, 100.0);
-        cam.SetSpeed(camSpeed);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
         ImGui::End();
     }
