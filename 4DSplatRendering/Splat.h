@@ -18,6 +18,8 @@
 
 constexpr unsigned long SPLAT4D_4_VERTEX_SIZE = 4 * sizeof(Geometry::Splat4DVertex);
 
+const float STD_LOWER = 1.3862943611198906f;
+
 namespace SplatUtils 
 {
     static float maxf(float a, float b) 
@@ -117,27 +119,28 @@ public:
         mGeoInfo = rot * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(rot);
     }
 
-    Splat4D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, float lifeTime, glm::vec3 dir, glm::vec4 color) :
+    Splat4D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, float lifeTime, float fadeof, glm::vec3 dir, glm::vec4 color) :
         mPosition{ pos },
         mColor{ color },
         mTimePos{ 0 },
         mGeoInfo{ 0 },
         mDir{ 0 }
     {
+        float stddiviation = (lifeTime * lifeTime) / (fadeof == 0.5f ? STD_LOWER : (-2.0 * log(fadeof)));
+        glm::vec3 tdir = dir * stddiviation;
         glm::mat3 R = glm::toMat3(rot);
         glm::mat3 S = glm::diagonal3x3(scale);
 
         glm::mat3 sig = R * S * S * glm::transpose(R);
-
-        glm::mat3 backProj = (1.0f / lifeTime) * glm::outerProduct(dir, dir);
+        glm::mat3 backProj = (1.0f / stddiviation) * glm::outerProduct(tdir, tdir);
 
         glm::mat3 upper3x3 = sig + backProj;
 
         glm::mat4 cov{
-            glm::vec4(upper3x3[0], dir[0]),
-            glm::vec4(upper3x3[1], dir[1]),
-            glm::vec4(upper3x3[2], dir[2]),
-            glm::vec4(dir, lifeTime)
+            glm::vec4(upper3x3[0], tdir.x),
+            glm::vec4(upper3x3[1], tdir.y),
+            glm::vec4(upper3x3[2], tdir.z),
+            glm::vec4(tdir, stddiviation)
         };
 
         mGeoInfo = cov;
@@ -646,7 +649,6 @@ class Splat2D
 public:
     Splat2D(glm::vec3 pos, glm::vec2 v0, float l0, float l1, glm::vec4 color) :
         mPosition(pos),
-        mBillboard{ pos, glm::vec3(sqrtf(l0), sqrtf(l1), 1.0f) },
         mSigma(glm::mat2(0.0f)),
         ml0{sqrtf(l0)},
         ml1{sqrtf(l1)},
@@ -678,7 +680,6 @@ public:
         shader.SetUniform4f("uSplatPos", mPosition.x, mPosition.y, mPosition.z, 1.0f);
         shader.SetUniformMat4f("uProj", c.GetProjMatrix());
         shader.SetUniformMat4f("uView", c.GetViewMatrix());
-        mBillboard.Render(r);
     }
 
     void SetLambas(float l0, float l1) 
@@ -737,5 +738,4 @@ private:
     glm::vec2 mv1;
     glm::vec3 mPosition;
     glm::mat2 mSigma;
-    Geometry::Billboard mBillboard;
 };

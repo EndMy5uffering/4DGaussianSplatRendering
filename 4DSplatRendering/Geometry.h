@@ -41,79 +41,28 @@ namespace Geometry
         glm::mat3 GeoInfo;
     };
 
-    namespace BillboardVertexData
-    {
-        const float BillboardVertexBuff[] = {
-            //     pos          |    uv    |
-            -1.0f,  1.0f, 0.0f, 0.0f, 1.0f, // 0 0
-            -1.0f, -1.0f, 0.0f, 1.0f, 1.0f, // 1 1
-             1.0f,  1.0f, 0.0f, 1.0f, 0.0f, // 2 2
-             1.0f, -1.0f, 0.0f, 0.0f, 0.0f, // 3 3
-        };
-
-        const unsigned int BoxIdxBuff[] = {
-            0, 1, 2,
-            2, 1, 3,
-        };
-
-    }
-
-    namespace Billboard2DVertexData
-    {
-        const float BillboardVertexBuff[] = {
-            //   pos    |    uv     |
-            -1.0f,  1.0f, 0.0f, 1.0f, // 0 0
-            -1.0f, -1.0f, 1.0f, 1.0f, // 1 1
-             1.0f,  1.0f, 1.0f, 0.0f, // 2 2
-             1.0f, -1.0f, 0.0f, 0.0f, // 3 3
-        };
-
-        const unsigned int BoxIdxBuff[] = {
-            0, 1, 2,
-            2, 1, 3,
-        };
-
-    }
-
-    class Billboard {
-
-    public:
-
-        Billboard(float* instancedata = 0, int instancedatasize = -1) :
-            mVertexBuffer{ BillboardVertexData::BillboardVertexBuff, 5 * 4 * sizeof(float) },
-            mIndexBuffer{ BillboardVertexData::BoxIdxBuff, 6 },
-            mTransform(glm::mat4(1.0f))
-        {
-            VertexBufferLayout layout;
-            layout.Push<float>(3);
-            layout.Push<float>(2);
-            mVertexArray.AddBuffer(mVertexBuffer, layout);
-
-        }
-
-        Billboard(glm::vec3 pos) : Billboard() { SetPosition(pos); }
-
-        Billboard(glm::vec3 pos, glm::vec3 scale) : Billboard(pos) { SetScale(scale); }
-
-        Billboard(glm::vec3 pos, float angle_rad, glm::vec3 axis) : Billboard(pos) { SetRotation(angle_rad, axis); }
-
-        ~Billboard() { }
-
-        void SetPosition(const glm::vec3& pos) { mTransform = glm::translate(mTransform, pos); }
-        void SetRotation(float angle_rad, const glm::vec3& axis) { mTransform = glm::rotate(mTransform, angle_rad, axis); }
-        void SetScale(const glm::vec3& scale) { mTransform = glm::scale(mTransform, scale); }
-        glm::mat4 GetTransform() { return glm::mat4(mTransform); }
-        void SetTransform(const glm::mat4& mat) { this->mTransform = glm::mat4(mat); }
-        void Render(Renderer& renderer)
-        {
-            renderer.Draw(mVertexArray, mIndexBuffer);
-        }
-
-    private:
-        VertexArray mVertexArray;
-        IndexBuffer mIndexBuffer;
-        VertexBuffer mVertexBuffer;
-        glm::mat4 mTransform;
+    const Vertex2D QuadVerteices[] = {
+        {{  0.5f,  0.5f }},
+        {{  0.5f, -0.5f }},
+        {{ -0.5f, -0.5f }},
+        {{ -0.5f,  0.5f }},
     };
+    const unsigned int QuadIdxBufferData[] = { 0,2,1,2,0,3 };
+    
+    struct Quad 
+    {
 
+        VertexBuffer QuadVB{ QuadVerteices, 4 * sizeof(Vertex2D) };
+        IndexBuffer QuadIdxBuffer{ QuadIdxBufferData, 6 };
+        VertexArray QuadVA{};
+        VertexBufferLayout QuadVBLayout{};
+
+        Quad() 
+        {
+            this->QuadVBLayout.Push<glm::vec2>();
+            this->QuadVA.AddBuffer(this->QuadVB, this->QuadVBLayout);
+        }
+
+        ~Quad() { }
+    };
 }

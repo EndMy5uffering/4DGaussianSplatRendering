@@ -70,7 +70,8 @@ private:
 	int mHeight;
 
 	float mSensitivity = 100.0f;
-	float mSpeed = 0.1f;
+	float mSpeed = 0.5f;
+	float mFastSpeed = 2.0f;
 
 	bool mLockY = false;
 	bool mLockX = false;

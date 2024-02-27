@@ -182,6 +182,8 @@
     <ClInclude Include="Geometry.h" />
     <ClInclude Include="IndexBuffer.h" />
     <ClInclude Include="Renderer.h" />
+    <ClInclude Include="Scene.h" />
+    <ClInclude Include="Scenes.h" />
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShareStorageBuffer.h" />
     <ClInclude Include="Splat.h" />

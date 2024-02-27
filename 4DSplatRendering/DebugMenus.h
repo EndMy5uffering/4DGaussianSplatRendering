@@ -16,6 +16,14 @@
 #define V3FromArray(a) { a[0], a[1], a[2] }
 #define RNG(lower, upper) lower + ((upper - lower) * (std::rand()/RAND_MAX))
 
+#define SwapScene(SType) { if (data->u_scene_ptr) \
+                {\
+                    data->u_scene_ptr->unload();\
+                    data->u_scene_ptr.reset();\
+                }\
+                data->u_scene_ptr = std::make_unique<SType>();\
+                data->u_scene_ptr->init(renderer, cam); }
+
 constexpr float RAD_RANGE = 2.0f * 3.1415926535f;
 
 namespace DebugMenus
@@ -66,6 +74,7 @@ namespace DebugMenus
         bool show_BlendOpt = false; 
         bool show_ShaderEditor = false;
         Camera* cam;
+        std::unique_ptr<Scene> u_scene_ptr;
     };
 
 	void Splat2DMenu(Splat2D* data, bool* is_Showing)
@@ -98,7 +107,7 @@ namespace DebugMenus
         ImGui::End();
 	}
 
-    void CamInfo(ImGuiIO& io, std::string& info, Camera& cam, bool* is_Showing)
+    void CamInfo(ImGuiIO& io, Camera& cam, bool* is_Showing)
     {
         if (!*is_Showing) return;
 
@@ -107,7 +116,6 @@ namespace DebugMenus
         ImGui::SliderFloat("Speed", &camSpeed, 0.0, 100.0);
         cam.SetSpeed(camSpeed);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
-        ImGui::Text(info.c_str());
         ImGui::End();
     }
 
@@ -349,14 +357,9 @@ namespace DebugMenus
         ImGui::End();
     }
 
-    void MainMenuStrip(MenueStripData* data) 
+    void MainMenuStrip(MenueStripData* data, Renderer& renderer, Camera& cam) 
     {
         ImGui::BeginMainMenuBar();
-
-        if (ImGui::BeginMenu("File"))
-        {
-            ImGui::EndMenu();
-        }
 
         if (ImGui::BeginMenu("Edit"))
         {
@@ -404,6 +407,23 @@ namespace DebugMenus
                 data->cam->SetOrientation({ 0.0f, 0.0f, -1.0f });
                 data->cam->SetUp({ 0.0f, 1.0f, 0.0f });
             }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Scenes"))
+        {
+            if (ImGui::Button("Linear Motion")) 
+                SwapScene(Scenes::LinearMotion)
+            if (ImGui::Button("Non Linear Motion")) 
+                SwapScene(Scenes::NonLinearMotion)
+            if (ImGui::Button("Rotation"))
+                SwapScene(Scenes::RotationMotion)
+            if (ImGui::Button("Combined Motion"))
+                SwapScene(Scenes::CombinedMotion)
+            ImGui::NewLine();
+            if (ImGui::Button("> Empty <"))
+                SwapScene(Scenes::Empty)
 
             ImGui::EndMenu();
         }

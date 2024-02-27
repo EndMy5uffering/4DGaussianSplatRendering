@@ -115,26 +115,35 @@ bool Camera::IsPositionFixed()
 
 void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 {
-
+	float currentSpeed = mSpeed;
 	if (imguiActive) return;
+
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
+	{
+		currentSpeed = mFastSpeed;
+	}
+	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
+	{
+		currentSpeed = mSpeed;
+	}
 
 	if (!mFixPostion) 
 	{
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
 		{
-			position += orientation * mSpeed;
+			position += orientation * currentSpeed;
 		}
 		if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS)
 		{
-			position += orientation * -mSpeed;
+			position += orientation * -currentSpeed;
 		}
 		if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS)
 		{
-			position += -mSpeed * glm::normalize(glm::cross(orientation, up));
+			position += -currentSpeed * glm::normalize(glm::cross(orientation, up));
 		}
 		if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS)
 		{
-			position += mSpeed * glm::normalize(glm::cross(orientation, up));
+			position += currentSpeed * glm::normalize(glm::cross(orientation, up));
 		}
 	}
 	if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
@@ -145,23 +154,13 @@ void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 	{
 		up = glm::rotate(up, glm::radians(-1.0f), orientation);
 	}
-
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_PRESS)
-	{
-		mSpeed = 1.0f;
-	}
-	if (glfwGetKey(window, GLFW_KEY_LEFT_SHIFT) == GLFW_RELEASE)
-	{
-		mSpeed = 0.1f;
-	}
-
 	if (glfwGetKey(window, GLFW_KEY_SPACE) == GLFW_PRESS)
 	{
-		position += mSpeed * up;
+		position += currentSpeed * up;
 	}
 	if (glfwGetKey(window, GLFW_KEY_LEFT_CONTROL) == GLFW_PRESS)
 	{
-		position += -mSpeed * up;
+		position += -currentSpeed * up;
 	}
 
 	if (glfwGetKey(window, GLFW_KEY_C) == GLFW_PRESS && !mCaptureMouse)
@@ -180,16 +179,6 @@ void Camera::HandleInput(GLFWwindow* window, bool imguiActive)
 	if (mCaptureMouse) 
 	{
 		HandleCamRotation(window);
-	}
-
-	if (glfwGetKey(window, GLFW_KEY_T) == GLFW_PRESS) 
-	{
-		double mx, my;
-		glfwGetCursorPos(window, &mx, &my);
-		double hw = (double)mWidth / 2.0, hh = (double)mHeight / 2.0;
-		std::cout << "MOUSE: { " << mx << "; " << my << " }\nSCREEN: { " 
-			<< mWidth << "; " << mHeight << "}\nHSCREEN: { "
-			<< hw << "; " << hh << " }\n";
 	}
 }
 
