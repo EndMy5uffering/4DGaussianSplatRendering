@@ -25,6 +25,7 @@ layout (binding = 2, std140) buffer InstanceData {
 uniform float uTime;
 uniform mat4 uView;
 uniform mat4 uProj;
+uniform float uMinOpacity;
 
 out mat2 oSig;
 out vec4 oColor;
@@ -71,7 +72,7 @@ mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues)
 
 void main()
 {
-    oTimeOpacity = pTime(uTime, iData.iSPos.w);
+    oTimeOpacity = maxf(pTime(uTime, iData.iSPos.w), uMinOpacity);
     vec3 sig1_3_4 = vec3(iData.iSig[0][3], iData.iSig[1][3], iData.iSig[2][3]);
     vec3 sig4_1_3 = vec3(iData.iSig[3][0], iData.iSig[3][1], iData.iSig[3][2]);
     vec3 mean_time_dependent = iData.iSPos.xyz + ((1.0 / iData.iSig[3][3]) * (uTime - iData.iSPos.w) * sig1_3_4);
