@@ -76,6 +76,9 @@ namespace Scenes
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
         std::unique_ptr< radix_sort::sorter > m_sorter;
 
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
         Shader m_S4DShaderInstanced;
         unsigned int m_numOf4DSpltas = 0;
 
@@ -100,6 +103,8 @@ namespace Scenes
         bool m_doTime = false;
         bool m_SceneMenu = false;
 
+        bool m_doSort = false;
+
     public:
         LinearMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
@@ -123,6 +128,11 @@ namespace Scenes
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
             glGenBuffers(1, &m_key_buf);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -131,6 +141,8 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
+            std::vector<GLuint> keys_non_sorted(m_numOf4DSpltas);
+            unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
@@ -150,9 +162,16 @@ namespace Scenes
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
                 }
             }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+
             m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
             std::cout << "Done initializing Scene: Linear Motion\n";
@@ -174,24 +193,23 @@ namespace Scenes
             GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
             GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-
-            std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
-            std::vector<GLfloat> val_buffer_data_pre(m_numOf4DSpltas);
-            for (int i = 0; i < m_numOf4DSpltas; ++i)
+            if (m_doSort) 
             {
-                key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
             }
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), key_buffer_data_pre.data());
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), val_buffer_data_pre.data());
-
-            m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
-
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
@@ -231,6 +249,7 @@ namespace Scenes
             ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
 
             ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_doSort);
 
             ImGui::NewLine();
 
@@ -286,6 +305,9 @@ namespace Scenes
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
         std::unique_ptr< radix_sort::sorter > m_sorter;
 
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
         Shader m_S4DShaderInstanced;
         unsigned int m_numOf4DSpltas = 0;
 
@@ -311,6 +333,8 @@ namespace Scenes
         bool m_doTime = false;
         bool m_SceneMenu = false;
 
+        bool m_DoSort = false;
+
     public:
         NonLinearMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
@@ -334,6 +358,11 @@ namespace Scenes
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
             glGenBuffers(1, &m_key_buf);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -342,6 +371,7 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
+            unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
@@ -362,9 +392,15 @@ namespace Scenes
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
                 }
             }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
             m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
             std::cout << "Done Init: Scenes::NonLinearMotion\n";
@@ -387,24 +423,23 @@ namespace Scenes
             GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
             GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-
-            std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
-            std::vector<GLfloat> val_buffer_data_pre(m_numOf4DSpltas);
-            for (int i = 0; i < m_numOf4DSpltas; ++i)
+            if (m_DoSort) 
             {
-                key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
             }
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), key_buffer_data_pre.data());
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), val_buffer_data_pre.data());
-
-            m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
-
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
@@ -445,6 +480,7 @@ namespace Scenes
             ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
 
             ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
 
             ImGui::NewLine();
 
@@ -502,6 +538,9 @@ namespace Scenes
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
         std::unique_ptr< radix_sort::sorter > m_sorter;
 
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
         Shader m_S4DShaderInstanced;
         unsigned int m_numOf4DSpltas = 0;
 
@@ -525,6 +564,7 @@ namespace Scenes
         bool m_loop = true;
         bool m_doTime = false;
         bool m_SceneMenu = false;
+        bool m_DoSort = false;
 
     public:
         RotationMotion(Renderer& r, Camera& c) : Scene(r, c)
@@ -549,6 +589,11 @@ namespace Scenes
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
             glGenBuffers(1, &m_key_buf);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -556,7 +601,8 @@ namespace Scenes
             glGenBuffers(1, &m_values_buf);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
-
+            
+            unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
@@ -577,9 +623,15 @@ namespace Scenes
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
                 }
             }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
             m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
             std::cout << "Done Init: Scenes::RotationMotion\n";
@@ -602,24 +654,23 @@ namespace Scenes
             GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
             GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-
-            std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
-            std::vector<GLfloat> val_buffer_data_pre(m_numOf4DSpltas);
-            for (int i = 0; i < m_numOf4DSpltas; ++i)
+            if(m_DoSort)
             {
-                key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
             }
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), key_buffer_data_pre.data());
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), val_buffer_data_pre.data());
-
-            m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
-
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
@@ -659,6 +710,7 @@ namespace Scenes
             ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
 
             ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
 
             ImGui::NewLine();
 
@@ -714,6 +766,9 @@ namespace Scenes
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
         std::unique_ptr< radix_sort::sorter > m_sorter;
 
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
         Shader m_S4DShaderInstanced;
         unsigned int m_numOf4DSpltas = 0;
 
@@ -741,6 +796,7 @@ namespace Scenes
         bool m_loop = true;
         bool m_doTime = false;
         bool m_SceneMenu = false;
+        bool m_DoSort = false;
 
     public:
         CombinedMotion(Renderer& r, Camera& c) : Scene(r, c)
@@ -765,6 +821,11 @@ namespace Scenes
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
 
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
             glGenBuffers(1, &m_key_buf);
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
@@ -773,6 +834,7 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
+            unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
@@ -794,9 +856,15 @@ namespace Scenes
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
                 }
             }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
             m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
             std::cout << "Done Init: Scenes::RotationMotion\n";
@@ -819,24 +887,23 @@ namespace Scenes
             GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
             GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-
-            std::vector<GLuint> key_buffer_data_pre(m_numOf4DSpltas);
-            std::vector<GLfloat> val_buffer_data_pre(m_numOf4DSpltas);
-            for (int i = 0; i < m_numOf4DSpltas; ++i)
+            if (m_DoSort) 
             {
-                key_buffer_data_pre[i] = i;
-                glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
             }
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), key_buffer_data_pre.data());
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), val_buffer_data_pre.data());
-
-            m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
-
 
             m_S4DShaderInstanced.Bind();
             m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
@@ -876,6 +943,7 @@ namespace Scenes
             ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
 
             ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
 
             ImGui::NewLine();
 
