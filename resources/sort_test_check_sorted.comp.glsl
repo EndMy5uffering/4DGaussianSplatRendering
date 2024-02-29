@@ -1,4 +1,4 @@
-#version 460
+#version 440
 
 #define THREAD_IDX        gl_LocalInvocationIndex
 #define THREADS_NUM       64
