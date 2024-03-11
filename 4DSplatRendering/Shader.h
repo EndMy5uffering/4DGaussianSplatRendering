@@ -3,7 +3,6 @@
 #include <unordered_map>
 #include <vector>
 #include "glm/glm.hpp"
-#include "Texture.h"
 
 typedef unsigned int ShaderType;
 
@@ -70,8 +69,6 @@ public:
 
 	void DispatchCompute(unsigned int width, unsigned int height, unsigned int depth);
 	void DispatchCompute(unsigned int width, unsigned int height);
-	void DispatchCompute(Texture &tex, unsigned int depth);
-	void DispatchCompute(Texture &tex);
 
 	std::string GetLoadedShaderSource(const char* path);
 	unsigned int GetRenderID();

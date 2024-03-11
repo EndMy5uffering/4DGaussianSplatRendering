@@ -234,16 +234,6 @@ void Shader::DispatchCompute(unsigned int width, unsigned int height)
     DispatchCompute(width, height, 1);
 }
 
-void Shader::DispatchCompute(Texture &tex, unsigned int depth)
-{
-    DispatchCompute(tex.GetWidth(), tex.GetHeight(), depth);
-}
-
-void Shader::DispatchCompute(Texture &tex)
-{
-    DispatchCompute(tex.GetWidth(), tex.GetHeight(), 1);
-}
-
 std::string Shader::GetLoadedShaderSource(const char* path)
 {
     ShaderSource found = { 0 };

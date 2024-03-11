@@ -22,7 +22,6 @@
 #include "VertexArray.h"
 #include "VertexBufferLayout.h"
 #include "Shader.h"
-#include "Texture.h"
 
 #include "Geometry.h"
 
