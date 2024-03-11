@@ -36,9 +36,6 @@
     <ClCompile Include="Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Splat.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="STB_Image.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -76,9 +73,6 @@
       <Filter>Source Files\imgui</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="SplatRenderer.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="ShareStorageBuffer.cpp">
@@ -150,9 +144,6 @@
       <Filter>Header Files\imgui</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="SplatRenderer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="BSPTree.h">

@@ -111,3 +111,23 @@ std::string Utils::V2ToStr(const std::string name, glm::vec2 v)
     ss << "[ " << v[0] << ", " << v[1] << " ]\n";
     return ss.str();
 }
+
+float Utils::minf(float a, float b)
+{
+    return a < b ? a : b;
+}
+
+float Utils::maxf(float a, float b)
+{
+    return a > b ? a : b;
+}
+
+float Utils::lerp(float a, float b, float t)
+{
+    return a + ((b - a) * t);
+}
+
+float Utils::mapf(float x, float a, float b, float c, float d)
+{
+    return c + ((x / (b - a)) * (d - c));
+}

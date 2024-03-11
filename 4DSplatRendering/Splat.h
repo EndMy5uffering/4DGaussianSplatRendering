@@ -117,6 +117,8 @@ public:
         //Forming rotation matrix
         glm::mat4 rot = mRl * mRr;
         mGeoInfo = rot * Scale4x4 * glm::transpose(Scale4x4) * glm::transpose(rot);
+
+        mDir = glm::vec3{ mGeoInfo[0][3], mGeoInfo[1][3] ,mGeoInfo[2][3] } *(1.0f / mGeoInfo[3][3]);
     }
 
     Splat4D(glm::vec4 pos, glm::quat rot, glm::vec3 scale, float lifeTime, float fadeof, glm::vec3 dir, glm::vec4 color) :
@@ -239,85 +241,11 @@ public:
 
     void DrawAxis(Renderer& renderer, Camera& cam) 
     {
-
-        //temp vector for calculation
-        //in fomula Sigma_1:3,4 and Sigma_4,1:3
-        glm::vec3 sig1_3_4{mGeoInfo[0][3], mGeoInfo[1][3], mGeoInfo[2][3]};
-        glm::vec3 sig4_1_3{mGeoInfo[3][0], mGeoInfo[3][1], mGeoInfo[3][2]};
-
-        //calcualtion of 3D mu with respect to time
-        glm::vec3 mean_time_dependent = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * (mTime - mPosition.w));
-        mTimePos = mean_time_dependent;
-        //temp mu in the future for drawing the time axis
-        glm::vec3 mean_time_dependent_next = glm::vec3{ mPosition } + (sig1_3_4 * (1.0f / mGeoInfo[3][3]) * ((mTime + 1.0f) - mPosition.w));
-        glm::vec3 tvec = (1.0f / mGeoInfo[3][3]) * sig4_1_3;
-        glm::mat3 sig3x3
-        {
-            glm::vec3(mGeoInfo[0]),
-                glm::vec3(mGeoInfo[1]),
-                glm::vec3(mGeoInfo[2])
-        };
-
-        sig3x3 = sig3x3 - glm::outerProduct(sig1_3_4, tvec);;
-
-        //From this point on calculation and drawing of 3D splat formula was only copied to save time
-        //This part and the part above will be moved into the shader later on
-
-        glm::mat4 view = cam.GetViewMatrix();
-        glm::mat3 W
-        {
-            glm::vec3(view[0]),
-                glm::vec3(view[1]),
-                glm::vec3(view[2]),
-        };
-        W = glm::transpose(W);
-
-        glm::vec4 posCamSpace = view * glm::vec4{glm::vec3(mean_time_dependent), 1.0};
-        glm::vec4 posScreenSpace = cam.GetProjMatrix() * posCamSpace;
-        posScreenSpace = posScreenSpace * (1.0f / posScreenSpace.w);
-
-        float z2 = posCamSpace.z * posCamSpace.z;
-
-        glm::vec2 focal = cam.GetFocal();
-
-        glm::mat3 J
-        {
-            1.0f / posCamSpace.z, 0.0, -posCamSpace.x / z2,
-                0.0f, 1.0f / posCamSpace.z, -posCamSpace.y / z2,
-                0.0f, 0.0f, 0.0f
-        };
-
-        glm::mat3 T = W * J;
-
-        glm::mat3 cov3 = glm::transpose(T) * sig3x3 * T;
-        glm::mat2 upper = SplatUtils::GetUpperMat2(cov3);
-
-        glm::vec2 lambdas = SplatUtils::GetEigenValues2x2(upper);
-        float l0 = sqrt(lambdas.x);
-        float l1 = sqrt(lambdas.y);
-
-        glm::mat2 eigenVecs = SplatUtils::GetEigenVectors2x2(upper, lambdas);
-
-        glm::vec2 v0 = glm::normalize(eigenVecs[0] / cam.GetViewport());
-        glm::vec2 v1 = glm::normalize(eigenVecs[1] / cam.GetViewport());
-        glm::mat2 R{v0, v1};
-        glm::mat2 S{l0, 0.0f, 0.0f, l1};
-        glm::mat2 _Sig = glm::inverse(R * S * glm::transpose(S) * glm::transpose(R));
-
-        if (drawHelperAxis)
-        {
-            glm::vec4 c0{0.87843f, 0.33725f, 0.99215f, 1.0f};
-            glm::vec4 c1{0.40784f, 0.42745f, 0.87843f, 1.0f};
-            glm::vec4 c2{0.58431f, 0.68627f, 0.75294f, 1.0f};
-            glm::vec4 c0_0{0.41568f, 0.69019f, 0.29803f, 1.0f};
-            //visualize time direction
-            glm::vec3 splatPos{mean_time_dependent};
-            glm::vec3 time_dir{glm::normalize(mean_time_dependent_next - splatPos)};
-            renderer.DrawLine(splatPos - time_dir * 20.0f, splatPos + time_dir * 20.0f, glm::vec4{0.0f, 0.0f, 0.0f, 1.0f}, cam, 5.0f);
-
-            glm::vec3 time_vec = glm::vec3{ mGeoInfo[0][3], mGeoInfo[1][3], mGeoInfo[2][3] } * (1.0f / mGeoInfo[3][3]);
-            renderer.DrawLine(splatPos, splatPos + time_vec, glm::vec4(0.0, 1.0, 0.0, 1.0), cam, 5.0f);
-        }
+        glm::vec3 mean_t = GetMeanInTime();
+        glm::vec3 dir = mDir;
+        glm::vec3 dir_n = glm::normalize(dir);
+        renderer.DrawLine(mean_t - dir_n * 10000.0f, mean_t + dir_n * 10000.0f, glm::vec4{0.133f, 0.18431f, 0.24314f, 1.0f}, cam, 2.0f);
+        renderer.DrawLine(mean_t, mean_t + dir, glm::vec4{0.0f, 0.82352f, 0.82745f, 1.0f}, cam, 5.0f);
     }
 
     inline std::vector<Geometry::Splat4DVertex> MakeMesh()
@@ -335,6 +263,16 @@ public:
     inline glm::vec4 GetMeanInTime() 
     {
         float ctime = (mTime - mPosition.w);
+        float x = mPosition.x + mDir.x * ctime;
+        float y = mPosition.y + mDir.y * ctime;
+        float z = mPosition.z + mDir.z * ctime;
+
+        return glm::vec4{x, y, z, 1};
+    }
+
+    inline glm::vec4 GetMeanInTime(float off)
+    {
+        float ctime = ((mTime + off) - mPosition.w);
         float x = mPosition.x + mDir.x * ctime;
         float y = mPosition.y + mDir.y * ctime;
         float z = mPosition.z + mDir.z * ctime;

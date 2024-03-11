@@ -107,7 +107,7 @@ int main(void)
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 4);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     //glfwWindowHint(GLFW_MAXIMIZED, 1);
-    //glfwWindowHint(GLFW_SAMPLES, 16);
+    //glfwWindowHint(GLFW_SAMPLES, 8);
     //glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
     /* Create a windowed mode window and its OpenGL context */

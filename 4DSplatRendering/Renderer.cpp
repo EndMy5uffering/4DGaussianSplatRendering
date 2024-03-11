@@ -76,6 +76,40 @@ void Renderer::DrawLine(const glm::vec3 v0, const glm::vec3 v1, const glm::vec4 
     glDeleteVertexArrays(1, &array);
 }
 
+void Renderer::DrawLine(std::vector<glm::vec3>& points, glm::vec4 color, Camera& cam, float thickness)
+{
+    if (points.size() < 2) return;
+
+    mLine3D.Bind();
+    mLine3D.SetUniformMat4f("uViewProj", cam.GetViewProjMatrix());
+    mLine3D.SetUniform4f("uColor", color);
+
+    GLuint vertexbuffer;
+    GLCall(glGenBuffers(1, &vertexbuffer));
+    GLCall(glBindBuffer(GL_ARRAY_BUFFER, vertexbuffer));
+    GLCall(glBufferData(GL_ARRAY_BUFFER, points.size() * sizeof(glm::vec3), points.data(), GL_STATIC_DRAW));
+
+    GLuint array;
+    glGenVertexArrays(1, &array);
+    glBindVertexArray(array);
+
+    GLCall(glEnableVertexAttribArray(0));
+    GLCall(glVertexAttribPointer(
+        0,
+        3,                  // size
+        GL_FLOAT,           // type
+        GL_FALSE,           // normalized
+        0,                  // stride
+        (void*)0            // array buffer offset
+    ));
+
+    GLCall(glLineWidth(thickness));
+    GLCall(glDrawArrays(GL_LINE_STRIP, 0, points.size()));
+
+    glDeleteBuffers(1, &vertexbuffer);
+    glDeleteVertexArrays(1, &array);
+}
+
 void Renderer::DrawGrid(float width, float height, const unsigned int divisionsX, const unsigned int divisionsY, glm::vec4 color, Camera& cam, float thickness)
 {
     mLine3D.Bind();

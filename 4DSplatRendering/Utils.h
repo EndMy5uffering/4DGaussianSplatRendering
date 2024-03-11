@@ -23,5 +23,22 @@ namespace Utils
 	std::string V3ToStr(const std::string name, glm::vec3 v);
 	std::string V2ToStr(const std::string name, glm::vec2 v);
 
+
+	//Stupid utils
+	float minf(float a, float b);
+	float maxf(float a, float b);
+	float lerp(float a, float b, float t);
+
+	/**
+		Mapps a value x that falls in the interval a and b to the interval c, d
+		@param x Value to be mapped
+		@param a Lower bound for the interval x falls into
+		@param b Upper bound for the interval x falls into
+		@param c Lower bound for the interval x gets mapped to
+		@param d Upper bound for the interval x gets mapped to
+		@return Mapped value of x now between c and d
+	*/
+	float mapf(float x, float a, float b, float c, float d);
+
 }
 

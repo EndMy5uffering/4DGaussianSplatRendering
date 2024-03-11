@@ -32,6 +32,7 @@ public:
     void Draw(const VertexArray& va, const IndexBuffer& ib) const;
     void Draw(const VertexArray& va, const IndexBuffer& ib, int instances) const;
     void DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam, float thickness);
+    void DrawLine(std::vector<glm::vec3>& points, glm::vec4 color, Camera& cam, float thickness);
     void DrawLine(glm::vec3 v0, glm::vec3 v1, glm::vec4 color, Camera& cam);
     void DrawGrid(float width, float height, const unsigned int divisionsX, const unsigned int divisionsY, glm::vec4 color, Camera& cam, float thickness);
     void DrawLine(glm::vec2 v0, glm::vec2 v1, glm::vec4 color);

@@ -8,6 +8,7 @@
 #include <map>
 #include <cstdlib>
 #include <ctime>
+#include <sstream>
 
 
 #define ArrayFromV4(v) { v.x, v.y, v.z, v.w }
@@ -110,9 +111,14 @@ namespace DebugMenus
     void CamInfo(ImGuiIO& io, Camera& cam, bool* is_Showing)
     {
         if (!*is_Showing) return;
+        
+        glm::vec3 ps = cam.GetPosition();
+        glm::vec3 dir = cam.orientation;
 
         ImGui::Begin("Cam Info", is_Showing);
         ImGui::Text("Running at: %.2f FPS | %.2f ms/Frame", io.Framerate, 1000.0f / io.Framerate);
+        ImGui::Text("POS: { %.2F, %.2F, %.2F }", ps.x, ps.y, ps.z);
+        ImGui::Text("DIR: { %.2F, %.2F, %.2F }", dir.x, dir.y, dir.z);
         ImGui::End();
     }
 
@@ -410,14 +416,23 @@ namespace DebugMenus
 
         if (ImGui::BeginMenu("Scenes"))
         {
-            if (ImGui::Button("Linear Motion")) 
-                SwapScene(Scenes::LinearMotion)
-            if (ImGui::Button("Non Linear Motion")) 
-                SwapScene(Scenes::NonLinearMotion)
-            if (ImGui::Button("Rotation"))
-                SwapScene(Scenes::RotationMotion)
-            if (ImGui::Button("Combined Motion"))
-                SwapScene(Scenes::CombinedMotion)
+            if (ImGui::Button("Linear Motion")){ SwapScene(Scenes::LinearMotion) }
+                
+            if (ImGui::Button("Non Linear Motion")){ SwapScene(Scenes::NonLinearMotion) }
+                
+            if (ImGui::Button("Rotation")){ SwapScene(Scenes::RotationMotion) }
+                
+            if (ImGui::Button("Combined Motion")){ SwapScene(Scenes::CombinedMotion) }
+                
+            ImGui::NewLine();
+
+
+            if (ImGui::Button("Cloud")) { SwapScene(Scenes::Clouds) }
+            if (ImGui::Button("2D Gaussians")) { SwapScene(Scenes::Gaussians2D) }
+            if (ImGui::Button("3D Gaussians")) { SwapScene(Scenes::Gaussians3D) }
+            if (ImGui::Button("4D Gaussians")) { SwapScene(Scenes::Gaussians4D) }
+                
+
             ImGui::NewLine();
             if (ImGui::Button("> Empty <"))
                 SwapScene(Scenes::Empty)

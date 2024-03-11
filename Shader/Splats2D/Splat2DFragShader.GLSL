@@ -2,31 +2,24 @@
 
 layout(location = 0) out vec4 color;
 
-in vec4 FragPos;
-in vec2 Scale;
+in vec4 oFragPos;
+in mat2 oSig;
+in vec4 oColor;
+in vec2 oSSPos;
 
-in vec4 SplatPos;
-
-uniform mat2 uSigma; //sigma matrix
-uniform vec4 uColor; //sigma matrix
-
-float p(vec2 x, vec2 mu)
+float p(vec2 x)
 {
-	vec2 pos = (x-mu);
-	vec2 spos = pos * uSigma;
-	return exp(-0.5 * dot(spos, pos));
-}
-
-float p2(vec4 splatcenter)
-{
-	return exp(-0.5*length(splatcenter.xyz - FragPos.xyz));
+	vec2 spos = oSig * x;
+	return exp(-0.5 * dot(spos, x));
 }
 
 void main()
 {
-	float c = p(FragPos.xy, SplatPos.xy);
-	//float c = p2(SplatPos);
-	//c = 1.0f;
-    color = vec4(c*uColor.x, c*uColor.y, c*uColor.z, c);
-	if(c < 0.01) discard;
+	vec2 offpos = oFragPos.xy - oSSPos;
+	float c = p(oFragPos.xy);
+
+    //color = vec4(c*oColor.x, c*oColor.y, c*oColor.z, c*oColor.w);
+    //color = c * oColor;
+    color = vec4(oColor.xyz, c * oColor.w);
+	if(c < 0.0001) discard;// color = vec4(oColor.x, oColor.y, oColor.z, 1.0);
 }
