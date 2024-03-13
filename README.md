@@ -10,7 +10,7 @@ Example render of some 2D splat:
 ![Example render of some splat](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/2DSplatsOnScreen_01.png?raw=true)
 
 Example render of a 3D Gaussian from various angles:
-<img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_03.png?raw=true" width="23%"></img> 
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_03.png?raw=true" width="23%"></img> 
 
 Example of batch rendering test with 10,000,000 splats in a 400x400x400 cube:  
 ![Mass rendering test with 10000000 splats](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/screenshot_05.png?raw=true)
@@ -25,10 +25,10 @@ They can even move smoothly
 ![4D Gaussian moving smooth](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Splat4DContinousMotion.gif?raw=true)
 
 Motion of teapot arround a circel:
-<img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_03.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_04.png?raw=true" width="23%"></img> 
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_03.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_04.png?raw=true" width="23%"></img> 
 
 Lower sampeling rate on the cirle:
-<img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_03.png?raw=true" width="23%"></img>  
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Experiment_NonLinearMotion_LowRes_03.png?raw=true" width="23%"></img>  
 
 Resources:  
 [Introduction to 3D Gaussian splatting](https://huggingface.co/blog/gaussian-splatting)  
