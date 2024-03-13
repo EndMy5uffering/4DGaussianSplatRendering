@@ -7,16 +7,16 @@ The most important part will then be the parameterization of 4D Gaussians and to
 Gaussian splatting as a tool for rendering volumetric scenes has proven to be a suitable alternative to other common techniques such as ray tracing and ray marching. Until a short while ago, Gaussians, commonly used by various reconstructive methods to depict 3D scenes, were limited in their abilities, only allowing for static scene reconstruction. With the introduction of 4D Gaussians the depiction of a dynamic scene becomes possible allowing for motion and deformation of a scene over time. In this work the possibilities and limitations of 4D Gaussians are explored with respect to their capabilities of modeling different types of motion. Different possibilities for parameterizing these Gaussians will also be a major part, finding a way to define a path they are supposed to follow, showcasing the results in some appropriate demo scenes.
 
 Example render of some 2D splat:  
-![Example render of some splat](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/2DSplatsOnScreen_01.png?raw=true)
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/2DSplatsOnScreen_01.png?raw=true" width="30%"></img> 
 
 Example render of a 3D Gaussian from various angles:
 <br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_01.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_02.png?raw=true" width="23%"></img> <img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/3D_Splat_Angle_03.png?raw=true" width="23%"></img> 
 
 Example of batch rendering test with 10,000,000 splats in a 400x400x400 cube:  
-![Mass rendering test with 10000000 splats](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/screenshot_05.png?raw=true)
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/screenshot_05.png?raw=true" width="30%"></img> 
 
 Its tea time!
-![4D Gaussian moving](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/UtahTeapot.png?raw=true)
+<br><img src="https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/UtahTeapot.png?raw=true" width="30%"></img> 
 
 4D Gaussian can move through time
 ![4D Gaussian moving](https://github.com/EndMy5uffering/4DGaussianSplatRendering/blob/main/Screenshots/Splat4DTimeMotion.gif?raw=true)
