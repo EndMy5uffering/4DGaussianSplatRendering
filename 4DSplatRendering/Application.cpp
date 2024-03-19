@@ -1,7 +1,11 @@
+/*
+    Basic setup was copied from the glfw documentation
+    https://www.glfw.org/documentation.html
+    Small additions were made to add functionality for scenes and the splats in general
+*/
+
 #define DEBUG_OUTPUT
 
-//#define SPLAT4D_DRAW
-//#define SPLAT3D_DRAW
 
 #include<GLEW/glew.h>
 #include <GLFW/glfw3.h>
@@ -47,7 +51,6 @@
 #include "ShareStorageBuffer.h"
 
 #include "VDataParser.h"
-float q_rsqrt(float number);
 
 #include "Scene.h"
 #include "Scenes.h"
@@ -56,18 +59,9 @@ float q_rsqrt(float number);
 
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
-//Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 20, 50, 50 }, glm::normalize(glm::vec3{0, -1.0, -1.0}));
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 70, 110, 110 }, glm::normalize(glm::vec3{0, -1.0, -1.0}));
 
-constexpr unsigned long SIZE_OF_SPLAT4D = sizeof(Geometry::Splat4DVertex);
-constexpr unsigned long SIZE_OF_4_SPLAT4D = 4 * sizeof(Geometry::Splat4DVertex);
-
-float frand(float from, float to)
-{
-    //std::srand(std::time(nullptr));
-    return from + ((to - from) * ((float)std::rand() / (float)RAND_MAX));
-}
-
+/* Callback function to react to screen resize event */
 void updateScreenSize(GLFWwindow* window, int width, int height) 
 {
     SCREEN_WIDTH = width;
@@ -75,24 +69,6 @@ void updateScreenSize(GLFWwindow* window, int width, int height)
     cam.Resize(SCREEN_WIDTH, SCREEN_HEIGHT);
     glViewport(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
 }
-
-//fast inverse sqrt from doom
-//code from: https://en.wikipedia.org/wiki/Fast_inverse_square_root
-float q_rsqrt(float number)
-{
-    long i;
-    float x2, y;
-    const float threehalfs = 1.5F;
-    x2 = number * 0.5F;
-    y = number;
-    i = *(long*)&y;
-    i = 0x5f3759df - (i >> 1);
-    y = *(float*)&i;
-    y = y * (threehalfs - (x2 * y * y)); 
-    return y;
-}
-
-
 
 int main(void)
 {
@@ -119,7 +95,7 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    //glfwSwapInterval(0); //Disable vsync
+    glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -128,8 +104,8 @@ int main(void)
     std::cout << glGetString(GL_VERSION) << std::endl;
 
     glfwSetWindowSizeCallback(window, updateScreenSize);
-    //IMGUI
 
+    //IMGUI Setup
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -146,7 +122,8 @@ int main(void)
     Renderer renderer;
     
     /* Loop until the user closes the window */
-    glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f,1.0f);
+    //glClearColor(0.34901960784313724f, 0.3843137254901961f, 0.4588235294117647f, 1.0f);
+    glClearColor(0.1843137254901961, 0.20784313725490197, 0.25882352941176473,1.0f);
     cam.SetFar(5000.0f);
 
     // Our state

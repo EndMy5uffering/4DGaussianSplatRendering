@@ -244,7 +244,8 @@ public:
         glm::vec3 mean_t = GetMeanInTime();
         glm::vec3 dir = mDir;
         glm::vec3 dir_n = glm::normalize(dir);
-        renderer.DrawLine(mean_t - dir_n * 10000.0f, mean_t + dir_n * 10000.0f, glm::vec4{0.133f, 0.18431f, 0.24314f, 1.0f}, cam, 2.0f);
+        renderer.DrawLine(mean_t - dir_n * 10000.0f, mean_t + dir_n * 10000.0f, glm::vec4{1.0f, 0.0f, 1.0f, 1.0f}, cam, 2.0f);
+        //renderer.DrawLine(mean_t - dir_n * 10000.0f, mean_t + dir_n * 10000.0f, glm::vec4{0.133f, 0.18431f, 0.24314f, 1.0f}, cam, 2.0f);
         renderer.DrawLine(mean_t, mean_t + dir, glm::vec4{0.0f, 0.82352f, 0.82745f, 1.0f}, cam, 5.0f);
     }
 

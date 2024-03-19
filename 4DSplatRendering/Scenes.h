@@ -1,15 +1,23 @@
+/*
+This file holds all the demo scenes that were used for the experiments and other showcases.
+*/
 #pragma once
 #include "Scene.h"
 #include <cstdlib>
 #include <ctime>
 #include <math.h>
 #include "Utils.h"
+#include <tuple>
 
 #define RANDOM (float(std::rand()) / float(RAND_MAX))
 
+typedef std::tuple<glm::vec3, glm::vec3> ModelEdges;
+
 namespace Scenes 
 {
-
+    /*
+        Struct to hold the data that is send to the shader.
+    */
     struct SplatData
     {
         glm::vec4 pos;
@@ -27,6 +35,57 @@ namespace Scenes
         }
     };
 
+    //function from https://en.wikipedia.org/wiki/HSL_and_HSV
+    static float hsl_f(float n, float h, float s, float l)
+    {
+        float k = fmod((n + (h / 30.0f)), 12.0f);
+        return l - (s * Utils::minf(l, 1.0f - l)) * Utils::maxf(-1.0f, Utils::minf(k - 3.0f, Utils::minf(9.0f - k, 1.0f)));
+    }
+
+    static glm::vec3 GetHSLColor(float h, float s, float l)
+    {
+        return { hsl_f(0.0f, h, s, l), hsl_f(8.0f, h, s, l), hsl_f(4.0f, h, s, l) };
+    }
+
+    static glm::vec4 GetColor(glm::vec3 pos, ModelEdges medges, glm::vec3 normal, float mina = 0.65f, float maxa = 1.0f, float lower = 0.0f) 
+    {
+        float max_bright = Utils::mapf(-glm::dot({0,-1,0}, normal), -1, 1, mina, maxa);
+        auto [minp, maxp] = medges;
+
+        return glm::clamp(glm::vec4{
+            Utils::lerp(lower, max_bright, ((pos.x - minp.x) / (maxp.x - minp.x))),
+            Utils::lerp(lower, max_bright, ((pos.y - minp.y) / (maxp.y - minp.y))),
+            Utils::lerp(lower, max_bright, ((pos.z - minp.z) / (maxp.z - minp.z))),
+                1.0f }, { 0.0, 0.0, 0.0, 1.0 }, { 1.0, 1.0, 1.0, 1.0 });
+
+        /*float h = Utils::lerp(0.0f, 120.0f, ((pos.x - minp.x) / (maxp.x - minp.x))) +
+            Utils::lerp(0.0f, 120.0f, ((pos.y - minp.y) / (maxp.y - minp.y))) + 
+            Utils::lerp(0.0f, 120.0f, ((pos.z - minp.z) / (maxp.z - minp.z)));
+
+        return glm::clamp(glm::vec4{ GetHSLColor(h, 1.0f, 0.5f), 1.0f }, { 0.0, 0.0, 0.0, 1.0 }, { 1.0, 1.0, 1.0, 1.0 });*/
+    }
+
+    static ModelEdges GetModelExtrema(std::vector<glm::mat3>& model)
+    {
+        glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
+        glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
+
+        for (int i = 0; i < model.size(); ++i)
+        {
+            glm::vec3 pos = model[i][0];
+            maxpos.x = Utils::maxf(pos.x, maxpos.x);
+            maxpos.y = Utils::maxf(pos.y, maxpos.y);
+            maxpos.z = Utils::maxf(pos.z, maxpos.z);
+            minpos.x = Utils::minf(pos.x, minpos.x);
+            minpos.y = Utils::minf(pos.y, minpos.y);
+            minpos.z = Utils::minf(pos.z, minpos.z);
+        }
+        return { minpos, maxpos };
+    }
+
+    /*
+        Empty demo scene to start the programm on.
+    */
     class Empty : public Scene
     {
 
@@ -67,16 +126,18 @@ namespace Scenes
         void GUI() override {}
     };
 
-
+    /*
+        Linear motion experiment scene.
+    */
     class LinearMotion : public Scene
     {
     private:
-        
+
         std::vector<glm::mat3> m_vModelData;
         std::vector<SplatData> m_sdata;
 
-        glm::vec3 m_first_pos;
-        glm::vec3 m_last_pos;
+        glm::vec3 m_first_pos{0};
+        glm::vec3 m_last_pos{0};
 
         GLuint m_key_buf = 0;
         GLuint m_values_buf = 0;
@@ -157,27 +218,13 @@ namespace Scenes
             std::vector<GLuint> keys_non_sorted(m_numOf4DSpltas);
             unsigned int s_idx = 0;
 
-            glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
-            glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
-
-            for (int i = 0; i < m_vModelData.size(); ++i)
-            {
-                glm::vec3 pos = m_vModelData[i][0];
-                maxpos.x = Utils::maxf(pos.x, maxpos.x);
-                maxpos.y = Utils::maxf(pos.y, maxpos.y);
-                maxpos.z = Utils::maxf(pos.z, maxpos.z);
-                minpos.x = Utils::minf(pos.x, minpos.x);
-                minpos.y = Utils::minf(pos.y, minpos.y);
-                minpos.z = Utils::minf(pos.z, minpos.z);
-            }
+            ModelEdges medge = GetModelExtrema(m_vModelData);
 
             glm::vec3 downVec{0, -1, 0};
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float max_bright = Utils::mapf(-glm::dot(downVec, m_vModelData[i][1]), -1, 1, 0.4, 0.9);
-
                     glm::vec3 pos = m_vModelData[i][0];
                     glm::vec3 dir{1.0, 0.0, 0.0};
                     glm::vec3 timeOffset = dir * float(dt * m_lin_time_multiplyer);
@@ -188,13 +235,7 @@ namespace Scenes
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         glm::normalize(dir) * m_Splat_Speed,
-                        glm::clamp(glm::vec4{
-                            Utils::lerp(0.1, max_bright, ((pos.x - minpos.x) / (maxpos.x - minpos.x))),
-                            Utils::lerp(0.1, max_bright, ((pos.y - minpos.y) / (maxpos.y - minpos.y))),
-                            Utils::lerp(0.1, max_bright, ((pos.z - minpos.z) / (maxpos.z - minpos.z))),
-                            1.0f 
-                        },
-                            {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
+                        GetColor(pos, medge, m_vModelData[i][1])
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
@@ -240,7 +281,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -347,6 +388,9 @@ namespace Scenes
 
     };
 
+    /*
+        Non linear motion experiment scene.
+    */
     class NonLinearMotion : public Scene
     {
     private:
@@ -436,18 +480,8 @@ namespace Scenes
             glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
             glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
 
-            for (int i = 0; i < m_vModelData.size(); ++i)
-            {
-                glm::vec3 pos = m_vModelData[i][0];
-                maxpos.x = Utils::maxf(pos.x, maxpos.x);
-                maxpos.y = Utils::maxf(pos.y, maxpos.y);
-                maxpos.z = Utils::maxf(pos.z, maxpos.z);
-                minpos.x = Utils::minf(pos.x, minpos.x);
-                minpos.y = Utils::minf(pos.y, minpos.y);
-                minpos.z = Utils::minf(pos.z, minpos.z);
-            }
 
-            glm::vec3 downVec{0, -1, 0};
+            ModelEdges medge = GetModelExtrema(m_vModelData);
 
             unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
@@ -455,8 +489,6 @@ namespace Scenes
                 m_positions.push_back(glm::rotate(glm::vec4{1.0, 0.0, 0.0, 0.0}, glm::radians(float(dt * m_angle_multiplyer)), { 0.0, 1.0, 0.0 }) * m_rotation_radius);
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float max_bright = Utils::mapf(-glm::dot(downVec, m_vModelData[i][1]), -1, 1, 0.4, 0.9);
-
                     glm::vec3 pos = m_vModelData[i][0];
                     glm::vec4 forward{ 1.0, 0.0, 0.0, 0.0 };
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(forward, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
@@ -468,13 +500,7 @@ namespace Scenes
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         (timeOffset_next - timeOffset) * m_Splat_Speed,
-                        glm::clamp(glm::vec4{
-                            Utils::lerp(0.1, max_bright, ((pos.x - minpos.x) / (maxpos.x - minpos.x))),
-                            Utils::lerp(0.1, max_bright, ((pos.y - minpos.y) / (maxpos.y - minpos.y))),
-                            Utils::lerp(0.1, max_bright, ((pos.z - minpos.z) / (maxpos.z - minpos.z))),
-                            1.0f
-                        },
-                            {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
+                        GetColor(pos, medge, m_vModelData[i][1])
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
@@ -521,7 +547,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0 / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -621,7 +647,9 @@ namespace Scenes
 
     };
 
-
+    /*
+        Rotational motion experiment scene.
+    */
     class RotationMotion : public Scene
     {
     private:
@@ -707,27 +735,13 @@ namespace Scenes
             glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
             glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
 
-            for (int i = 0; i < m_vModelData.size(); ++i)
-            {
-                glm::vec3 pos = m_vModelData[i][0];
-                maxpos.x = Utils::maxf(pos.x, maxpos.x);
-                maxpos.y = Utils::maxf(pos.y, maxpos.y);
-                maxpos.z = Utils::maxf(pos.z, maxpos.z);
-                minpos.x = Utils::minf(pos.x, minpos.x);
-                minpos.y = Utils::minf(pos.y, minpos.y);
-                minpos.z = Utils::minf(pos.z, minpos.z);
-            }
-
-            glm::vec3 downVec{0, -1, 0};
+            ModelEdges medge = GetModelExtrema(m_vModelData);
 
             unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float max_bright = Utils::mapf(-glm::dot(downVec, m_vModelData[i][1]), -1, 1, 0.4, 0.9);
-
-
                     glm::vec4 pos{ m_vModelData[i][0], 0.0 };
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(pos, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(pos, glm::radians(float((dt + 1) * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
@@ -739,13 +753,7 @@ namespace Scenes
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         (timeOffset_next - timeOffset) * m_Splat_Speed,
-                        glm::clamp(glm::vec4{
-                            Utils::lerp(0.1, max_bright, ((pos.x - minpos.x) / (maxpos.x - minpos.x))),
-                            Utils::lerp(0.1, max_bright, ((pos.y - minpos.y) / (maxpos.y - minpos.y))),
-                            Utils::lerp(0.1, max_bright, ((pos.z - minpos.z) / (maxpos.z - minpos.z))),
-                            1.0f
-                        },
-                            {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
+                        GetColor(pos, medge, m_vModelData[i][1])
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
@@ -786,7 +794,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -883,6 +891,9 @@ namespace Scenes
 
     };
 
+    /*
+        Combined motion experiment scene.
+    */
     class CombinedMotion : public Scene
     {
     private:
@@ -971,24 +982,15 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-            glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
-            glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
+            /*This is to find the tip of the pot*/
             glm::vec3 frontmostPoint{-INFINITY, -INFINITY, 0.0};
             for (int i = 0; i < m_vModelData.size(); ++i)
             {
-                glm::vec3 pos = m_vModelData[i][0];
-                maxpos.x = Utils::maxf(pos.x, maxpos.x);
-                maxpos.y = Utils::maxf(pos.y, maxpos.y);
-                maxpos.z = Utils::maxf(pos.z, maxpos.z);
-                minpos.x = Utils::minf(pos.x, minpos.x);
-                minpos.y = Utils::minf(pos.y, minpos.y);
-                minpos.z = Utils::minf(pos.z, minpos.z);
-
-                frontmostPoint.x = Utils::maxf(pos.x, frontmostPoint.x);
-                if(frontmostPoint.x == pos.x) frontmostPoint.y = pos.y;
+                frontmostPoint.x = Utils::maxf(m_vModelData[i][0].x, frontmostPoint.x);
+                if(frontmostPoint.x == m_vModelData[i][0].x) frontmostPoint.y = m_vModelData[i][0].y;
             }
-
-            glm::vec3 downVec{0, -1, 0};
+            /*---------------------------------*/
+            ModelEdges medge = GetModelExtrema(m_vModelData);
 
             unsigned int s_idx = 0;
             for (int dt = 0; dt < m_steps_in_time; ++dt)
@@ -1004,8 +1006,6 @@ namespace Scenes
                 );
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    float max_bright = Utils::mapf(-glm::dot(downVec, m_vModelData[i][1]), -1, 1, 0.4, 0.9);
-
                     glm::vec3 md = m_object_scale * m_vModelData[i][0];
                     glm::vec3 nd = m_vModelData[i][1];
                     glm::vec3 pos = glm::vec3{ glm::rotate(glm::vec4{md, 0}, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) } + m_lin_multiplyer * glm::vec3{m_frequency * float(dt), m_amplitude * sinf(m_frequency * float(dt)), 0.0f};
@@ -1018,13 +1018,7 @@ namespace Scenes
                         m_splat_lifetime,
                         m_splat_fade_offset,
                         (pos_next - pos) * m_Splat_Speed,
-                        glm::clamp(glm::vec4{
-                            Utils::lerp(0.1, max_bright, ((m_vModelData[i][0].x - minpos.x) / (maxpos.x - minpos.x))),
-                            Utils::lerp(0.1, max_bright, ((m_vModelData[i][0].y - minpos.y) / (maxpos.y - minpos.y))),
-                            Utils::lerp(0.1, max_bright, ((m_vModelData[i][0].z - minpos.z) / (maxpos.z - minpos.z))),
-                            1.0f
-                        },
-                            {0.0, 0.0, 0.0, 1.0}, {1.0, 1.0, 1.0, 1.0})
+                        GetColor(m_vModelData[i][0], medge, m_vModelData[i][1])
                     };
 
                     m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
@@ -1070,7 +1064,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -1175,7 +1169,9 @@ namespace Scenes
 
     };
 
-
+    /*
+        A test scene as a test to model clouds.
+    */
     class Clouds : public Scene
     {
     private:
@@ -1264,7 +1260,7 @@ namespace Scenes
         {
             GetCamera().SetPosition({ 50, 90, 90 });
             GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
-            std::cout << "Init: Scenes::RotationMotion\n";
+            std::cout << "Init: Scenes::Clouds\n";
             m_numOf4DSpltas = 150;
             m_sdata.clear();
             m_sdata.reserve(m_numOf4DSpltas);
@@ -1295,17 +1291,17 @@ namespace Scenes
 
             m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
-            std::cout << "Done Init: Scenes::RotationMotion\n";
+            std::cout << "Done Init: Scenes::Clouds\n";
         }
 
         void unload() override
         {
-            std::cout << "Unloading Scenes::RotationMotion\n";
+            std::cout << "Unloading Scenes::Clouds\n";
             m_ssbo_splat_data.reset();
             m_sorter.reset();
             if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
-            std::cout << "Done unloading Scenes::RotationMotion\n";
+            std::cout << "Done unloading Scenes::Clouds\n";
         }
 
         void Render() override
@@ -1321,7 +1317,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(0) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -1402,6 +1398,9 @@ namespace Scenes
 
     };
 
+    /*
+        2D Gaussians showcase scene.
+    */
     class Gaussians2D : public Scene
     {
     private:
@@ -1451,26 +1450,26 @@ namespace Scenes
         {
             GetCamera().SetPosition({ -10, 10, 0 });
             GetCamera().SetOrientation({ 1.0, -1.0, 0 });
-            std::cout << "Init: Scenes::RotationMotion\n";
+            std::cout << "Init: Scenes::Gaussians2D\n";
             m_sdata.clear();
 
             /*2D*/
-            /*for (int i = 0; i < num_splats; ++i)
+            for (int i = 0; i < num_splats; ++i)
             {
                 float a = glm::radians(360.0f * RANDOM);
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{1.0f + (5.0f * RANDOM), 0.0f, 0.0f, 1.0f + (5.0f * RANDOM)};
                 m_sdata.push_back({ {10.0f * (-0.5f + RANDOM), 10.0f * (-0.5f + RANDOM), 0, 0}, {RANDOM, RANDOM, RANDOM, 1.0}, R * S * S * glm::transpose(R) });
-            }*/
+            }
 
-            float global_scalar = 0.3f;
+            /*float global_scalar = 1.0f;
 
             for (int i = 0; i < 60; ++i)
             {
                 float a = glm::radians(Utils::lerp(0.0f, 361.0f, float(i) / 60.0f));
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{0.2f, 0.0f, 0.0f, 1.0f * global_scalar};
-                m_sdata.push_back({ {3.0f * sinf(a), 3.0f  * cosf(a), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R)});
+                m_sdata.push_back({ {3.0f * sinf(a), 3.0f  * cosf(a), 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R)});
             }
 
             for (int i = 0; i < 30; ++i)
@@ -1478,14 +1477,14 @@ namespace Scenes
                 float a = glm::radians(Utils::lerp(0.0f, 360.0f, float(i) / 30.0f));
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{0.2f, 0.0f, 0.0f, 0.4f * global_scalar};
-                m_sdata.push_back({ {-1.5f + (0.5f * sinf(a)), 1.0f + (0.5f * cosf(a)), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
+                m_sdata.push_back({ {-1.5f + (0.5f * sinf(a)), 1.0f + (0.5f * cosf(a)), 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
             }
 
             for (int i = 0; i < 5; ++i)
             {
                 glm::mat2 R{1, 0, 0, 1};
                 glm::mat2 S{0.4f, 0.0f, 0.0f, 0.4f };
-                m_sdata.push_back({ {-1.5f, 1.0f, 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
+                m_sdata.push_back({ {-1.5f, 1.0f, 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
             }
 
             for (int i = 0; i < 30; ++i)
@@ -1493,14 +1492,14 @@ namespace Scenes
                 float a = glm::radians(Utils::lerp(0.0f, 360.0f, float(i) / 30.0f));
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{0.2f, 0.0f, 0.0f, 0.4f * global_scalar};
-                m_sdata.push_back({ {1.5f + (0.5f * sinf(a)), 1.0f + (0.5f * cosf(a)), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
+                m_sdata.push_back({ {1.5f + (0.5f * sinf(a)), 1.0f + (0.5f * cosf(a)), 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
             }
 
             for (int i = 0; i < 5; ++i)
             {
                 glm::mat2 R{1, 0, 0, 1};
                 glm::mat2 S{0.4f, 0.0f, 0.0f, 0.4f};
-                m_sdata.push_back({ {1.5f, 1.0f, 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
+                m_sdata.push_back({ {1.5f, 1.0f, 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
             }
 
             for (int i = 0; i < 15; ++i)
@@ -1508,32 +1507,16 @@ namespace Scenes
                 float a = 0;
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{0.2f, 0.0f, 0.0f, 0.8f * global_scalar};
-                m_sdata.push_back({ {Utils::lerp(-1.4f, 1.5f, float(i)/15.0f), -0.0f, 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
+                m_sdata.push_back({ {Utils::lerp(-1.4f, 1.5f, float(i)/15.0f), -0.0f, 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
             }
-
-            /*for (int i = 0; i < 16; ++i)
-            {
-                float a = glm::radians(Utils::lerp(0.0f, 195.0f, float(i) / 16.0f));
-                glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
-                glm::mat2 S{0.2f, 0.0f, 0.0f, 0.4f * global_scalar};
-                m_sdata.push_back({ {-1.4f + (0.3f * sinf(a)), -0.5f + (0.5f * cosf(a)), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
-            }
-
-            for (int i = 0; i < 16; ++i)
-            {
-                float a = glm::radians(Utils::lerp(195.0f, 195.0f + 195.0f, float(i) / 16.0f));
-                glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
-                glm::mat2 S{0.2f, 0.0f, 0.0f, 0.4f * global_scalar};
-                m_sdata.push_back({ {1.3f + (0.3f * sinf(a)), -0.5f + (0.5f * cosf(a)), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
-            }*/
 
             for (int i = 0; i < 30; ++i)
             {
                 float a = glm::radians(Utils::lerp(95.0f, 270.0f, float(i) / 30.0f));
                 glm::mat2 R{cosf(a), -sinf(a), sinf(a), cos(a)};
                 glm::mat2 S{0.2f, 0.0f, 0.0f, 0.8f * global_scalar};
-                m_sdata.push_back({ {-0.05f + (1.5f * sinf(a)), -0.0f + (1.5f * cosf(a)), 0, 0}, {0.0, 0.0, 0.0, 1.0}, R * S * S * glm::transpose(R) });
-            }
+                m_sdata.push_back({ {-0.05f + (1.5f * sinf(a)), -0.0f + (1.5f * cosf(a)), 0, 0}, {GetHSLColor(193, 1.0, 0.75), 1.0}, R * S * S * glm::transpose(R) });
+            }*/
             /*2D*/
 
             m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_sdata.size() * sizeof(Splat2DData));
@@ -1591,6 +1574,9 @@ namespace Scenes
 
     };
 
+    /*
+        3D Gaussian showcase scene.
+    */
     class Gaussians3D : public Scene
     {
     private:
@@ -1645,7 +1631,7 @@ namespace Scenes
         {
             GetCamera().SetPosition({ -10, 10, 0 });
             GetCamera().SetOrientation({ 1, -1.0, 0 });
-            std::cout << "Init: Scenes::RotationMotion\n";
+            std::cout << "Init: Scenes::Gaussians3D\n";
             m_numOf3DSpltas = 1;
             m_sdata.clear();
             m_sdata.reserve(m_numOf3DSpltas);
@@ -1672,7 +1658,7 @@ namespace Scenes
                 1,
                 0.5,
                 {0,0,0},
-                {0.0, 0.0, 0.0, 1.0}
+                {GetHSLColor(193, 1.0, 0.6), 1.0}
             };                
             m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
             m_key_buffer_data_pre.push_back(0);
@@ -1712,7 +1698,7 @@ namespace Scenes
                 {
                     m_key_buffer_data_pre[i] = i;
                     glm::vec4 tmp = m_sdata[i].GetMeanInTime(0) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = q_rsqrt(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
                 }
 
                 glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
@@ -1793,7 +1779,9 @@ namespace Scenes
 
     };
 
-
+    /*
+        4D Gaussian showcase scene.
+    */
     class Gaussians4D : public Scene
     {
     private:
@@ -1840,19 +1828,19 @@ namespace Scenes
         {
             GetCamera().SetPosition({ -10, 16, 5 });
             GetCamera().SetOrientation({ 1, -1.0, 0 });
-            std::cout << "Init: Scenes::RotationMotion\n";
+            std::cout << "Init: Scenes::Gaussians4D\n";
 
-            /*m_s4ds.push_back({glm::vec4{ 0.0, 0.0, 0.0, 0.0 },
+            m_s4ds.push_back({glm::vec4{ 0.0, 0.0, 0.0, 0.0 },
                 glm::normalize(glm::quatLookAt(glm::vec3{1.0, 0.0, 1.0}, { 0.0, 1.0, 0.0 })),
                 glm::vec3{ 10,20,10 },
                 1,
                 0.5,
                 glm::vec3{ 1,1,1 } * 5.0f,
-                glm::vec4{ 1.0, 1.0, 1.0, 1.0 } });*/
+                glm::vec4{ 1.0, 1.0, 1.0, 1.0 } });
 
-            glm::quat q0 = glm::quatLookAt(glm::vec3{1, 2, 1}, glm::vec3{0, 1, 0});
-            glm::quat q1 = glm::quatLookAt(glm::vec3{1, -1, 0}, glm::vec3{0,1,0});
-            m_s4ds.push_back({ glm::vec4{0, 0, 0, 0}, q0, q1, glm::vec4{10, 10, 10, 1}, glm::vec4{1,1,1,1} });
+            //glm::quat q0 = glm::quatLookAt(glm::vec3{1, 2, 1}, glm::vec3{0, 1, 0});
+            //glm::quat q1 = glm::quatLookAt(glm::vec3{1, -1, 0}, glm::vec3{0,1,0});
+            //m_s4ds.push_back({ glm::vec4{0, 0, 0, 0}, q0, q1, glm::vec4{10, 10, 10, 1}, glm::vec4{1,1,1,1} });
 
             for (Splat4D &s4d : m_s4ds) 
             {
@@ -1894,7 +1882,7 @@ namespace Scenes
                 {
                     s4d.SetTime(m_time);
                     s4d.DrawAxis(GetRenderer(), GetCamera());
-                    GetRenderer().DrawLine(s4d.GetMeanInTime(), glm::vec3{1, 2, 1}, glm::vec4{});
+                    //GetRenderer().DrawLine(s4d.GetMeanInTime(), glm::vec3{1, 2, 1}, glm::vec4{1.0f , 0.0f, 1.0f, 1.0f});
                 }
             }
             
@@ -1958,4 +1946,525 @@ namespace Scenes
 
     };
 
+
+    /*
+        Trying to break motion.
+    */
+    class BrokenMotion : public Scene
+    {
+    private:
+
+        std::vector<glm::mat3> m_vModelData;
+        std::vector<SplatData> m_sdata;
+        std::vector<glm::vec3> m_positions;
+
+        GLuint m_key_buf = 0;
+        GLuint m_values_buf = 0;
+
+        std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
+        std::unique_ptr< radix_sort::sorter > m_sorter;
+
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
+        Shader m_S4DShaderInstanced;
+        unsigned int m_numOf4DSpltas = 0;
+
+        const Geometry::Quad quad;
+
+        float m_time = 0.0f;
+        float m_max_time = 90.0f;
+        float m_time_speed = 0.25f;
+        float m_min_opacity = 0.0f;
+        float m_Splat_Speed = 1.0f;
+        float m_splat_lifetime = 1.0f;
+        float m_splat_fade_offset = 0.5f;
+        int m_steps_in_time = 92;
+
+        float m_object_scale = 5.0f;
+        float m_splat_scale_x = 4.0f;
+        float m_splat_scale_y = 4.0f;
+        float m_splat_scale_z = 1.0f;
+
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
+
+        bool m_DoSort = false;
+
+        bool m_showGrid = true;
+        bool m_showAxis = true;
+        bool m_showUnitlenght = true;
+        bool m_showPath = false;
+
+    public:
+        BrokenMotion(Renderer& r, Camera& c) : Scene(r, c)
+        {
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
+            m_S4DShaderInstanced.BuildShader();
+        }
+        ~BrokenMotion()
+        {
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+        }
+
+        void init() override
+        {
+            GetCamera().SetPosition({ 0, 60, 60 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
+            std::cout << "Init: Scenes::BrokenMotion\n";
+            m_vModelData = VData::parse("../Objects/teapot.vdata");
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
+            m_sdata.clear();
+            m_sdata.reserve(m_numOf4DSpltas);
+
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
+            glGenBuffers(1, &m_key_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            glGenBuffers(1, &m_values_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            ModelEdges medge = GetModelExtrema(m_vModelData);
+
+            unsigned int s_idx = 0;
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
+            {
+                glm::vec3 posdt{1.0f + dt, fmod((1.0f + dt), 20.0f), 0.0f};
+                glm::vec3 posdtn{1.0f + (dt + 1.0f), fmod((1.0f + (dt + 1.0f)), 20.0f), 0.0f};
+                m_positions.push_back(posdt);
+                for (int i = 0; i < m_vModelData.size(); ++i)
+                {
+                    glm::vec3 pos = m_vModelData[i][0];
+                    glm::vec4 forward{ 1.0, 0.0, 0.0, 0.0 };
+                    Splat4D s4d{
+                        glm::vec4{(m_object_scale* pos) + (posdt), float(dt)},
+                        glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
+                        glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
+                        m_splat_lifetime,
+                        m_splat_fade_offset,
+                        (posdtn - posdt) * m_Splat_Speed,
+                        GetColor(pos, medge, m_vModelData[i][1])
+                    };
+
+                    m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
+                }
+            }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+            m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
+            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
+            std::cout << "Done Init: Scenes::NonLinearMotion\n";
+        }
+
+        void unload() override
+        {
+            std::cout << "Unloading Scenes::NonLinearMotion\n";
+            m_ssbo_splat_data.reset();
+            m_sorter.reset();
+            m_positions.clear();
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+            std::cout << "Done unloading Scenes::NonLinearMotion\n";
+        }
+
+        void Render() override
+        {
+
+            if (m_showGrid) GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            if (m_showAxis) GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            if (m_showUnitlenght) GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
+
+            if (m_showPath)
+            {
+                GetRenderer().DrawLine(m_positions, { 1.0,0.0,0.0,1.0 }, GetCamera(), 5.0f);
+            }
+
+            if (m_DoSort)
+            {
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
+            }
+
+            m_S4DShaderInstanced.Bind();
+            m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
+            m_S4DShaderInstanced.SetUniform1f("uMinOpacity", m_min_opacity);
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
+
+            GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
+            m_ssbo_splat_data->Bind(2);
+
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+
+        }
+
+        void Update(GLFWwindow* hwin) override
+        {
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
+
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop)
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
+        }
+
+        void GUI() override
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Non Linear Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
+
+            ImGui::NewLine();
+
+            ImGui::Checkbox("Grid", &m_showGrid);
+            ImGui::Checkbox("Axis", &m_showAxis);
+            ImGui::Checkbox("Unit length", &m_showUnitlenght);
+            ImGui::Checkbox("Path", &m_showPath);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Run"))
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_min_opacity", &m_min_opacity);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
+            ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
+            ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
+            ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Reload Scene"))
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
+    };
+
+    /*
+        Trying to break motion.
+    */
+    class SquareMotion : public Scene
+    {
+    private:
+
+        std::vector<glm::mat3> m_vModelData;
+        std::vector<SplatData> m_sdata;
+        std::vector<glm::vec3> m_positions;
+
+        GLuint m_key_buf = 0;
+        GLuint m_values_buf = 0;
+
+        std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
+        std::unique_ptr< radix_sort::sorter > m_sorter;
+
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
+        Shader m_S4DShaderInstanced;
+        unsigned int m_numOf4DSpltas = 0;
+
+        const Geometry::Quad quad;
+
+        float m_time = 0.0f;
+        float m_max_time = 90.0f;
+        float m_time_speed = 0.25f;
+        float m_min_opacity = 0.0f;
+        float m_Splat_Speed = 1.0f;
+        float m_splat_lifetime = 1.0f;
+        float m_splat_fade_offset = 0.5f;
+        float m_square_size = 40.0f;
+        int m_steps_in_time = 92;
+
+        float m_object_scale = 5.0f;
+        float m_splat_scale_x = 4.0f;
+        float m_splat_scale_y = 4.0f;
+        float m_splat_scale_z = 1.0f;
+
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
+
+        bool m_DoSort = false;
+
+        bool m_showGrid = true;
+        bool m_showAxis = true;
+        bool m_showUnitlenght = true;
+        bool m_showPath = false;
+
+    public:
+        SquareMotion(Renderer& r, Camera& c) : Scene(r, c)
+        {
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
+            m_S4DShaderInstanced.BuildShader();
+        }
+        ~SquareMotion()
+        {
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+        }
+
+        void init() override
+        {
+            GetCamera().SetPosition({ 0, 60, 60 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
+            std::cout << "Init: Scenes::SquareMotion\n";
+            m_vModelData = VData::parse("../Objects/teapot.vdata");
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
+            m_sdata.clear();
+            m_sdata.reserve(m_numOf4DSpltas);
+
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
+            glGenBuffers(1, &m_key_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            glGenBuffers(1, &m_values_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            ModelEdges medge = GetModelExtrema(m_vModelData);
+
+            unsigned int s_idx = 0;
+            int side = 0;
+            int stepsPerSide = m_steps_in_time / 4;
+            float deltaStep = m_square_size / float(stepsPerSide);
+            glm::vec3 posdt{m_square_size /2.0f,0.0, m_square_size /2.0f}; //starting pos
+            glm::vec3 posdtn = glm::vec3{ m_square_size / 2.0f, 0.0, m_square_size / 2.0f} +
+                (deltaStep * glm::vec3{-1.0f, 0.0f, 0.0f}); //starting pos next
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
+            {
+                glm::vec3 dir{0};
+                if (dt > 0 && dt % stepsPerSide == 0) side += 1;
+                if (side == 0) dir = { -1.0f, 0.0f, 0.0f };
+                if (side == 1) dir = { 0.0f, 0.0f, -1.0f };
+                if (side == 2) dir = { 1.0f, 0.0f, 0.0f };
+                if (side == 3) dir = { 0.0f, 0.0f, 1.0f};
+                posdt = posdt + (deltaStep * dir);
+
+                int s2 = side;
+                if ((dt+1) > 0 && (dt + 1) % stepsPerSide == 0) s2 += 1;
+                if (s2 == 0) dir = { -1.0f, 0.0f, 0.0f };
+                if (s2 == 1) dir = { 0.0f, 0.0f, -1.0f };
+                if (s2 == 2) dir = { 1.0f, 0.0f, 0.0f };
+                if (s2 == 3) dir = { 0.0f, 0.0f, 1.0f };
+                posdtn = posdtn + (deltaStep * dir);
+                m_positions.push_back(posdt);
+                for (int i = 0; i < m_vModelData.size(); ++i)
+                {
+                    glm::vec3 pos = m_vModelData[i][0];
+                    glm::vec4 forward{ 1.0, 0.0, 0.0, 0.0 };
+                    Splat4D s4d{
+                        glm::vec4{(m_object_scale* pos) + (posdt), float(dt)},
+                        glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
+                        glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
+                        m_splat_lifetime,
+                        m_splat_fade_offset,
+                        (posdtn - posdt) * m_Splat_Speed,
+                        GetColor(pos, medge, m_vModelData[i][1])
+                    };
+
+                    m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
+                }
+            }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+            m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
+            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
+            std::cout << "Done Init: Scenes::SquareMotion\n";
+        }
+
+        void unload() override
+        {
+            std::cout << "Unloading Scenes::SquareMotion\n";
+            m_ssbo_splat_data.reset();
+            m_sorter.reset();
+            m_positions.clear();
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+            std::cout << "Done unloading Scenes::SquareMotion\n";
+        }
+
+        void Render() override
+        {
+
+            if (m_showGrid) GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            if (m_showAxis) GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            if (m_showUnitlenght) GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
+
+            if (m_showPath)
+            {
+                GetRenderer().DrawLine(m_positions, { 1.0,0.0,0.0,1.0 }, GetCamera(), 5.0f);
+            }
+
+            if (m_DoSort)
+            {
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
+            }
+
+            m_S4DShaderInstanced.Bind();
+            m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
+            m_S4DShaderInstanced.SetUniform1f("uMinOpacity", m_min_opacity);
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
+
+            GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
+            m_ssbo_splat_data->Bind(2);
+
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+
+        }
+
+        void Update(GLFWwindow* hwin) override
+        {
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
+
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop)
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
+        }
+
+        void GUI() override
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Square Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
+
+            ImGui::NewLine();
+
+            ImGui::Checkbox("Grid", &m_showGrid);
+            ImGui::Checkbox("Axis", &m_showAxis);
+            ImGui::Checkbox("Unit length", &m_showUnitlenght);
+            ImGui::Checkbox("Path", &m_showPath);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Run"))
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_min_opacity", &m_min_opacity);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+            ImGui::InputFloat("m_square_size", &m_square_size);
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
+            ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
+            ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
+            ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Reload Scene"))
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
+    };
 }

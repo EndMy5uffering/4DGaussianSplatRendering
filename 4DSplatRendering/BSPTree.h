@@ -1,3 +1,10 @@
+/*
+	Binary space partitioning tree.
+	Basic concept was teken from https://en.wikipedia.org/wiki/Binary_space_partitioning
+	The implementation was changed to only use the distance to the camera to sort elements into the tree.
+	Ultimately this sorting method was not used as it was slower then the radix sort that is now in use in most scenes.
+*/
+
 #pragma once
 
 #include<functional>
@@ -28,8 +35,6 @@ private:
 
 	void BackToFrontRec(std::function<void(T* e)>& op, BSPNode* current);
 	void FrontToBackRec(std::function<void(T* e)>& op, BSPNode* current);
-
-	BSPNode* GetNew();
 
 public:
 

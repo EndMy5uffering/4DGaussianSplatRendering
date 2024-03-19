@@ -77,7 +77,7 @@ void main()
 
     gl_Position = vec4(R * S * iVPos.xy, -5.0, 1.0);
     oFragPos = vec4(R * 8 * S * iVPos.xy, 0.0, 1.0);
-    gl_Position = uProj * gl_Position + posScreenSpace;
+    gl_Position = uProj * gl_Position + uProj * posCamSpace;
     //oFragPos = gl_Position;
     oSSPos = posScreenSpace.xy;
     oSig = _Sig;
