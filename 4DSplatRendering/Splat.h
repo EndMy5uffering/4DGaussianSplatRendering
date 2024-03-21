@@ -292,7 +292,7 @@ public:
         this->mTime = t;
     }
 
-    glm::vec4 GetColor() 
+    glm::vec4& GetColor() 
     {
         return this->mColor;
     }
@@ -302,7 +302,7 @@ public:
         this->mColor = color;
     }
 
-    glm::vec4 GetPosititon() 
+    glm::vec4& GetPosititon() 
     {
         return this->mPosition;
     }
@@ -312,7 +312,7 @@ public:
         this->mPosition = p;
     }
 
-    glm::mat4 GetGeoInfo() 
+    glm::mat4& GetGeoInfo() 
     {
         return this->mGeoInfo;
     }
@@ -344,6 +344,13 @@ public:
     }
 
 	~Splat3D() {}
+
+    void Recalc() 
+    {
+        glm::mat3 tscale = glm::diagonal3x3(mScale);
+        glm::mat3 trot = glm::toMat3(glm::normalize(mRot));
+        mGeoInfo = trot * tscale * tscale * glm::transpose(trot);
+    }
 
     void Draw(Renderer& r, Shader& splatShader, Camera& cam)
     {
@@ -499,12 +506,12 @@ public:
         this->mRot = rot;
     }
 
-    glm::quat GetQuaternion() 
+    glm::quat& GetQuaternion() 
     {
         return this->mRot;
     }
 
-    glm::vec3 GetScale() 
+    glm::vec3& GetScale() 
     {
         return this->mScale;
     }
@@ -514,7 +521,7 @@ public:
         this->mPosition = pos;
     }
 
-    glm::vec4 GetPosition()
+    glm::vec4& GetPosition()
     {
         return mPosition;
     }
@@ -524,9 +531,19 @@ public:
         this->mColor = color;
     }
 
-    glm::vec4 GetColor() 
+    glm::vec4& GetColor() 
     {
         return this->mColor;
+    }
+
+    glm::mat3& GetGeoInfo() 
+    {
+        return this->mGeoInfo;
+    }
+
+    void SetGeoInfo(glm::mat3& ninfo) 
+    {
+        this->mGeoInfo = ninfo;
     }
 
 private:

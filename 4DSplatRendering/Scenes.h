@@ -36,6 +36,13 @@ namespace Scenes
         }
     };
 
+    struct SplatData3D
+    {
+        glm::vec4 pos;
+        glm::vec4 col;
+        glm::mat3 sig;
+    };
+
     //function from https://en.wikipedia.org/wiki/HSL_and_HSV
     static float hsl_f(float n, float h, float s, float l)
     {
@@ -1472,12 +1479,6 @@ namespace Scenes
 
         }
 
-        float p(float x, float mu, float sig)
-        {
-            float e = ((x - mu) / sig);
-            return expf(-0.5 * (e * e));
-        }
-
         void init() override
         {
             GetCamera().SetPosition({ -10, 10, 0 });
@@ -1615,32 +1616,41 @@ namespace Scenes
     {
     private:
 
-
-        std::vector<SplatData> m_sdata;
-
         GLuint m_key_buf = 0;
         GLuint m_values_buf = 0;
 
-        std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
-        std::unique_ptr< radix_sort::sorter > m_sorter;
-
-        std::vector<GLuint> m_key_buffer_data_pre;
-        std::vector<GLfloat> m_val_buffer_data_pre;
-
-        Shader m_S4DShaderInstanced;
-        unsigned int m_numOf3DSpltas = 0;
+        Shader m_S3DShaderInstanced;
 
         const Geometry::Quad quad;
 
         bool m_SceneMenu = false;
         bool m_DoSort = false;
 
+        unsigned int idxbd[6] = {0,1,2,2,3,0};
+
+        VertexBuffer vbo{ nullptr, 4*sizeof(Geometry::Splat3DVertex) };
+        IndexBuffer ibo{ idxbd, 6};
+        VertexArray vao;
+
+        Splat3D s3d;
+
     public:
-        Gaussians3D(Renderer& r, Camera& c) : Scene(r, c)
+        Gaussians3D(Renderer& r, Camera& c) : Scene(r, c),
+            s3d{
+                glm::vec4{0.0, 0.0, 0.0, 0.0},
+                glm::normalize(glm::quatLookAt(glm::vec3{1.0,0.0,0.0}, {0.0, 1.0, 0.0})),
+                {40,20,10}, {GetHSLColor(193, 1.0, 0.6), 1.0}
+            }
         {
-            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
-            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
-            m_S4DShaderInstanced.BuildShader();
+            m_S3DShaderInstanced.AddShaderSource("../Shader/Splats3D/Splat3DFragShaderFull.GLSL", GL_FRAGMENT_SHADER);
+            m_S3DShaderInstanced.AddShaderSource("../Shader/Splats3D/Splat3DVertexShaderFull.GLSL", GL_VERTEX_SHADER);
+            m_S3DShaderInstanced.BuildShader();
+            VertexBufferLayout vbl;
+            vbl.Push<glm::vec2>();
+            vbl.Push<glm::vec3>();
+            vbl.Push<glm::vec4>();
+            vbl.Push<glm::mat3>();
+            vao.AddBuffer(vbo, vbl);
         }
         ~Gaussians3D()
         {
@@ -1648,62 +1658,19 @@ namespace Scenes
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
         }
 
-        float p(float x, float mu, float sig)
-        {
-            float e = ((x - mu) / sig);
-            return expf(-0.5 * (e * e));
-        }
-
-                void init() override
+        void init() override
         {
             GetCamera().SetPosition({ -10, 10, 0 });
             GetCamera().SetOrientation({ 1, -1.0, 0 });
             std::cout << "Init: Scenes::Gaussians3D\n";
-            m_numOf3DSpltas = 1;
-            m_sdata.clear();
-            m_sdata.reserve(m_numOf3DSpltas);
 
-            m_key_buffer_data_pre.clear();
-            m_key_buffer_data_pre.reserve(m_numOf3DSpltas);
-            m_val_buffer_data_pre.clear();
-            m_val_buffer_data_pre.reserve(m_numOf3DSpltas);
-
-            glGenBuffers(1, &m_key_buf);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf3DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
-
-            glGenBuffers(1, &m_values_buf);
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf3DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
-
-
-            Splat4D s4d{
-                {0.0, 0.0, 0.0, 0.0},
-                glm::normalize(glm::quatLookAt(glm::vec3{1.0,0.0,0.0}, {0.0, 1.0, 0.0})),
-                {40,20,10},
-                1,
-                0.5,
-                {0,0,0},
-                {GetHSLColor(193, 1.0, 0.6), 1.0}
-            };                
-            m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-            m_key_buffer_data_pre.push_back(0);
-            m_val_buffer_data_pre.push_back(0.0f);
             
-
-            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf3DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
-
-            m_sorter = std::make_unique< radix_sort::sorter >(m_numOf3DSpltas);
-            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf3DSpltas * sizeof(SplatData));
             std::cout << "Done Init: Scenes::RotationMotion\n";
         }
 
         void unload() override
         {
             std::cout << "Unloading Scenes::RotationMotion\n";
-            m_ssbo_splat_data.reset();
-            m_sorter.reset();
             if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
             if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
             std::cout << "Done unloading Scenes::RotationMotion\n";
@@ -1716,32 +1683,13 @@ namespace Scenes
             GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
             GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-            if (m_DoSort)
-            {
-                for (int i = 0; i < m_numOf3DSpltas; ++i)
-                {
-                    m_key_buffer_data_pre[i] = i;
-                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(0) - glm::vec4(GetCamera().GetPosition(), 1);
-                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
-                }
+            m_S3DShaderInstanced.Bind();
+            m_S3DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S3DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf3DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+            s3d.MakeMesh(vbo, 0);
 
-                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
-                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf3DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
-
-                m_sorter->sort(m_values_buf, m_key_buf, m_numOf3DSpltas);
-            }
-
-            m_S4DShaderInstanced.Bind();
-            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
-            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
-
-            GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
-            m_ssbo_splat_data->Bind(2);
-
-            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf3DSpltas);
+            GetRenderer().Draw(vao, ibo);
         }
 
         void Update(GLFWwindow* hwin) override
@@ -1754,12 +1702,21 @@ namespace Scenes
             if (!m_SceneMenu) return;
             ImGui::Begin("Combination Scene Menu", &m_SceneMenu);
 
+            ImGui::ColorPicker4("", (float*) &s3d.GetColor());
+            ImGui::NewLine();
+            ImGui::DragFloat3("Scale", (float*) &s3d.GetScale(), 1.0f, 0.0f, 50.0f);
+            ImGui::NewLine();
+            ImGui::DragFloat4("Position", (float*)&s3d.GetPosition(), 1.0f, -50.0f, 50.0f);
+            ImGui::NewLine();
+            ImGui::DragFloat4("Rotation(Quat)", (float*)&s3d.GetQuaternion(), 0.01f, -1.0f, 1.0f);
+
+            s3d.Recalc();
+
             if (ImGui::Button("Reload Scene"))
             {
                 unload();
                 init();
             }
-
 
             ImGui::End();
         }
@@ -1777,8 +1734,8 @@ namespace Scenes
 
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
 
-        std::vector<SplatData> m_sdata;
-        std::vector<Splat4D> m_s4ds;
+        Splat4D m_s4ds;
+        SplatData sdata;
 
         const Geometry::Quad quad;
 
@@ -1796,7 +1753,13 @@ namespace Scenes
         bool m_show_splat_menu = false;
 
     public:
-        Gaussians4D(Renderer& r, Camera& c) : Scene(r, c)
+        Gaussians4D(Renderer& r, Camera& c) : Scene(r, c), m_s4ds{ glm::vec4{ 0.0, 0.0, 0.0, 0.0 },
+                glm::normalize(glm::quatLookAt(glm::vec3{1.0, 0.0, 1.0}, { 0.0, 1.0, 0.0 })),
+                glm::vec3{ 10,20,10 },
+                1,
+                0.5,
+                glm::vec3{ 1,1,1 } *5.0f,
+                glm::vec4{ 1.0, 1.0, 1.0, 1.0 } }
         {
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderMod.GLSL", GL_VERTEX_SHADER);
@@ -1807,32 +1770,15 @@ namespace Scenes
             m_ssbo_splat_data.reset();
         }
 
-        float p(float x, float mu, float sig)
-        {
-            float e = ((x - mu) / sig);
-            return expf(-0.5 * (e * e));
-        }
-
         void init() override
         {
             GetCamera().SetPosition({ -10, 16, 5 });
             GetCamera().SetOrientation({ 1, -1.0, 0 });
             std::cout << "Init: Scenes::Gaussians4D\n";
 
-            m_s4ds.push_back({glm::vec4{ 0.0, 0.0, 0.0, 0.0 },
-                glm::normalize(glm::quatLookAt(glm::vec3{1.0, 0.0, 1.0}, { 0.0, 1.0, 0.0 })),
-                glm::vec3{ 10,20,10 },
-                1,
-                0.5,
-                glm::vec3{ 1,1,1 } * 5.0f,
-                glm::vec4{ 1.0, 1.0, 1.0, 1.0 } });
+            sdata = { m_s4ds.GetPosititon(), m_s4ds.GetColor(), m_s4ds.GetGeoInfo()};
 
-            for (Splat4D &s4d : m_s4ds)
-            {
-                m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
-            }
-
-            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_s4ds.size() * sizeof(SplatData));
+            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(&sdata, 1 * sizeof(SplatData));
 
             std::cout << "Done Init: Scenes::RotationMotion\n";
         }
@@ -1863,11 +1809,8 @@ namespace Scenes
 
             if (m_show_axis) 
             {
-                for (Splat4D& s4d : m_s4ds)
-                {
-                    s4d.SetTime(m_time);
-                    s4d.DrawAxis(GetRenderer(), GetCamera());
-                }
+                m_s4ds.SetTime(m_time);
+                m_s4ds.DrawAxis(GetRenderer(), GetCamera());
             }
             
 
@@ -1915,15 +1858,14 @@ namespace Scenes
             ImGui::NewLine();
 
             ImGui::InputFloat("m_min_opacity", &m_min_opacity);
-
             ImGui::NewLine();
+
 
             if (ImGui::Button("Reload Scene"))
             {
                 unload();
                 init();
             }
-
 
             ImGui::End();
         }
@@ -2514,8 +2456,8 @@ namespace Scenes
 
         void init() override
         {
-            GetCamera().SetPosition({ 0, 60, 60 });
-            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
+            GetCamera().SetPosition({ 0, 2, 8 });
+            GetCamera().SetOrientation({ 0.0, -0.10, -1.4 });
             std::cout << "Init: Scenes::ObjectDisplay\n";
             m_vModelData = VData::parse_splat_data("../Objects/Mage.sd");
             m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
