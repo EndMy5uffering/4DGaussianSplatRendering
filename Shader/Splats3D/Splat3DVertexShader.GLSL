@@ -1,3 +1,6 @@
+/*
+    Old vertex shader used for billboard
+*/
 #version 440 core
 
 layout(location = 0) in vec4 inPos;

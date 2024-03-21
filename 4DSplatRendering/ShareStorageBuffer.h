@@ -1,3 +1,8 @@
+/*
+	As the basic structure for the different buffers is the same
+	this class was copied form the other buffer classes and ajusted to handle SSBOs
+*/
+
 #pragma once
 
 #include "Renderer.h"

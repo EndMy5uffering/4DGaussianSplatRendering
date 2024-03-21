@@ -1,3 +1,11 @@
+/*
+    Basic implementation of the different Gaussians from 2D - 4D
+    These classes are not in use as there were written for better debugging
+    The 4D class is only used for parameterization and to calcualte the covariance matrix
+    Same with 3D and 2D.
+    Most of the stuff in this file is now handled by the shaders.
+*/
+
 #pragma once
 
 #include <glm/glm.hpp>
@@ -249,18 +257,6 @@ public:
         renderer.DrawLine(mean_t, mean_t + dir, glm::vec4{0.0f, 0.82352f, 0.82745f, 1.0f}, cam, 5.0f);
     }
 
-    inline std::vector<Geometry::Splat4DVertex> MakeMesh()
-    {
-        std::vector<Geometry::Splat4DVertex> vertices;
-        vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-        vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
-
-        return vertices;
-
-    }
-
     inline glm::vec4 GetMeanInTime() 
     {
         float ctime = (mTime - mPosition.w);
@@ -280,46 +276,6 @@ public:
 
         return glm::vec4{x, y, z, 1};
     }
-
-    inline void MakeMesh(VertexBuffer& vb, unsigned int offset)
-    {
-        if (mverts.size() <= 0)
-        {
-            std::vector<Geometry::Splat4DVertex> vertices;
-            vertices.reserve(4);
-            vertices.push_back({ {  0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
-            vertices.push_back({ {  0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-            vertices.push_back({ { -0.5f, -0.5f }, mPosition, mColor, mGeoInfo });
-            vertices.push_back({ { -0.5f,  0.5f }, mPosition, mColor, mGeoInfo });
-            mverts = vertices;
-        }
-
-        vb.SubData(offset, mverts.data(), SPLAT4D_4_VERTEX_SIZE);
-    }
-
-    static inline std::vector<unsigned int> GetIdxList(unsigned int offset) 
-    {
-        std::vector<unsigned int> idxBuff;
-        idxBuff.push_back(0 + offset);
-        idxBuff.push_back(2 + offset);
-        idxBuff.push_back(1 + offset);
-        idxBuff.push_back(2 + offset);
-        idxBuff.push_back(0 + offset);
-        idxBuff.push_back(3 + offset);
-        return idxBuff;
-    }
-
-    static inline VertexBufferLayout GetBufferLayout() 
-    {
-        VertexBufferLayout layout;
-        layout.Push<glm::vec2>();
-        layout.Push<glm::vec4>();
-        layout.Push<glm::vec4>();
-        layout.Push<glm::mat4>();
-
-        return layout;
-    }
-
 
     float GetTime()
     {

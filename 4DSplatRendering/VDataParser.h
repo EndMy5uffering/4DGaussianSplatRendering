@@ -1,3 +1,8 @@
+/*
+    Some functions to load the splat data files (.sd) and the vertex data fiels (.vdata)
+    These files were created externaly using a python script and blender
+*/
+
 #pragma once
 
 #include <vector>

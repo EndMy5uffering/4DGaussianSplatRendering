@@ -13,7 +13,7 @@
 #include "GLFW/glfw3.h"
 #include "GLEW/glew.h"
 
-
+/*A simple helper class/ namespace with a few vertices and a quad*/
 
 namespace Geometry 
 {
@@ -49,6 +49,7 @@ namespace Geometry
     };
     const unsigned int QuadIdxBufferData[] = { 0,2,1,2,0,3 };
     
+    /*Used in the scenes for rendering the gaussians*/
     struct Quad 
     {
 

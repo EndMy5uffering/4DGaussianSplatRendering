@@ -1,3 +1,9 @@
+/*
+    Vertex shader for instancing
+    Takes in the individual Gaussians from a SSBO an the sotred indeces to access the buffer
+    and draw the Gaussians in the correct order
+*/
+
 #version 440 core
 
 #define iData data[sortidx[gl_InstanceID]]
@@ -12,10 +18,12 @@ struct SplatData
 
 layout(location = 0) in vec2 iVPos;
 
+//SSBO for the sorted indeces
 layout (binding = 1, std430) buffer SortingBuffer {
     uint sortidx[];
 };
 
+//SSBO for the Gaussian data
 layout (binding = 2, std140) buffer InstanceData {
     SplatData data[];
 };
@@ -33,6 +41,10 @@ out vec4 oFragPos;
 out float oFaulty;
 out float oTimeOpacity;
 
+/*
+    function to calculate to opacity in time
+    this can be done per vertex to save on computations
+*/ 
 float pTime(float t, float mu)
 {
     return exp(-0.5 * (t - mu) * (1.0 / iData.iSig[3][3]) * (t - mu));
@@ -43,6 +55,7 @@ float maxf(float a, float b)
     return a >= b ? a : b;
 }
 
+// Helper funciton to get the eigenvalues
 vec2 GetEigenValues2x2(mat2 mat) 
 {
     //https://www.youtube.com/watch?v=e50Bj7jn9IQ
@@ -54,16 +67,11 @@ vec2 GetEigenValues2x2(mat2 mat)
     return vec2(maxf(m - d, 0.000001), maxf(m + d, 0.000001));
 }
 
-/*mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues) 
-{
-    float offdiag = mat[0][1];
-    vec2 eigenVec0 = normalize(vec2( (-offdiag) / (mat[0][0] - eigenValues[0]) , 1 ));
-    vec2 eigenVec1 = vec2( eigenVec0.y, -eigenVec0.x );
-    return mat2(normalize(eigenVec0), normalize(eigenVec1));
-}*/
-
+//Helper function to get the eigenvectors
 mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues) 
 {
+    // https://math.stackexchange.com/questions/395698/fast-way-to-calculate-eigen-of-2x2-matrix-using-a-formula
+
     vec2 eigenVec0 = normalize(vec2( mat[0][1], eigenValues[0] - mat[0][0] ));
     vec2 eigenVec1 = vec2( eigenVec0.y, -eigenVec0.x );
     return mat2(normalize(eigenVec0), normalize(eigenVec1));

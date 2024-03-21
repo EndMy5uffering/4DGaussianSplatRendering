@@ -1,5 +1,6 @@
 /*
-This file holds all the demo scenes that were used for the experiments and other showcases.
+    This file holds all the demo scenes that were used for the experiments and other showcases.
+    I admind this file is a bit chaotic and long. If i had more time i would redo this.
 */
 #pragma once
 #include "Scene.h"
@@ -57,14 +58,13 @@ namespace Scenes
             Utils::lerp(lower, max_bright, ((pos.y - minp.y) / (maxp.y - minp.y))),
             Utils::lerp(lower, max_bright, ((pos.z - minp.z) / (maxp.z - minp.z))),
                 1.0f }, { 0.0, 0.0, 0.0, 1.0 }, { 1.0, 1.0, 1.0, 1.0 });
-
-        /*float h = Utils::lerp(0.0f, 120.0f, ((pos.x - minp.x) / (maxp.x - minp.x))) +
-            Utils::lerp(0.0f, 120.0f, ((pos.y - minp.y) / (maxp.y - minp.y))) + 
-            Utils::lerp(0.0f, 120.0f, ((pos.z - minp.z) / (maxp.z - minp.z)));
-
-        return glm::clamp(glm::vec4{ GetHSLColor(h, 1.0f, 0.5f), 1.0f }, { 0.0, 0.0, 0.0, 1.0 }, { 1.0, 1.0, 1.0, 1.0 });*/
     }
 
+    /**
+        Finds the outer most points of a given model
+
+        @param[in] model A vector of matrices containing the model information provided from a vData model
+    */
     static ModelEdges GetModelExtrema(std::vector<glm::mat3>& model)
     {
         glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
@@ -83,6 +83,11 @@ namespace Scenes
         return { minpos, maxpos };
     }
 
+    /**
+        Finds the outer most points of a given model
+
+        @param[in] model A vector of splat data containing the model information provided from a splat data model
+    */
     static ModelEdges GetModelExtrema(std::vector<VData::VSplatData>& model)
     {
         glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
@@ -151,14 +156,14 @@ namespace Scenes
     {
     private:
 
-        std::vector<glm::mat3> m_vModelData;
-        std::vector<SplatData> m_sdata;
+        std::vector<glm::mat3> m_vModelData; // Model (teapot)
+        std::vector<SplatData> m_sdata; // Splat data genereted from the model data
 
-        glm::vec3 m_first_pos{0};
-        glm::vec3 m_last_pos{0};
+        glm::vec3 m_first_pos{0}; // Used for the path
+        glm::vec3 m_last_pos{0}; // Used for the path
 
-        GLuint m_key_buf = 0;
-        GLuint m_values_buf = 0;
+        GLuint m_key_buf = 0; // ID of sort buffer
+        GLuint m_values_buf = 0; // ID of sort buffer
 
         std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
         std::unique_ptr< radix_sort::sorter > m_sorter;
@@ -175,7 +180,7 @@ namespace Scenes
         float m_time_speed = 0.25f;
         float m_max_time = 50.0f;
         float m_min_opacity = 0.0f;
-        float m_Splat_Speed = 1.0f;
+        float m_splat_speed = 1.0f;
         float m_splat_lifetime = 1.0f;
         float m_splat_fade_offset = 0.5f;
         float m_lin_time_multiplyer = 1.0f;
@@ -187,19 +192,20 @@ namespace Scenes
         float m_splat_scale_z = 1.0f;
 
         bool m_loop = true;
-        bool m_doTime = false;
-        bool m_SceneMenu = false;
+        bool m_do_time = false;
+        bool m_scene_menu = false;
 
-        bool m_doSort = false;
+        bool m_do_sort = false;
 
-        bool m_showGrid = true;
-        bool m_showAxis = true;
-        bool m_showUnitlenght = true;
-        bool m_showPath = false;
+        bool m_show_grid = true;
+        bool m_show_axis = true;
+        bool m_show_unitlenght = true;
+        bool m_show_path = false;
 
     public:
         LinearMotion(Renderer& r, Camera& c) : Scene(r, c)
         {
+            // loading shader for the scene
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
             m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
             m_S4DShaderInstanced.BuildShader();
@@ -234,25 +240,28 @@ namespace Scenes
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
             std::vector<GLuint> keys_non_sorted(m_numOf4DSpltas);
-            unsigned int s_idx = 0;
+            unsigned int s_idx = 0; //Sorting index for later
 
-            ModelEdges medge = GetModelExtrema(m_vModelData);
+            ModelEdges medge = GetModelExtrema(m_vModelData); //Used for the color gradient
 
             glm::vec3 downVec{0, -1, 0};
+            /*
+                Init all splats of the object in all positions in time
+            */
             for (int dt = 0; dt < m_steps_in_time; ++dt)
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
-                    glm::vec3 pos = m_vModelData[i][0];
+                    glm::vec3 pos = m_vModelData[i][0]; //Vertex position
                     glm::vec3 dir{1.0, 0.0, 0.0};
                     glm::vec3 timeOffset = dir * float(dt * m_lin_time_multiplyer);
                     Splat4D s4d{
-                        glm::vec4{(m_object_scale * pos) + timeOffset, float(dt)},
+                        glm::vec4{(m_object_scale * pos) + timeOffset, float(dt)}, //Linear position offset
                         glm::normalize(glm::quatLookAt(glm::normalize(m_vModelData[i][1]), glm::vec3(0,1,0))),
                         glm::vec3{m_splat_scale_x, m_splat_scale_y, m_splat_scale_z},
                         m_splat_lifetime,
                         m_splat_fade_offset,
-                        glm::normalize(dir) * m_Splat_Speed,
+                        glm::normalize(dir) * m_splat_speed,
                         GetColor(pos, medge, m_vModelData[i][1])
                     };
 
@@ -284,16 +293,16 @@ namespace Scenes
 
         void Render() override
         {
-            if(m_showGrid) GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
-            if(m_showAxis) GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
-            if(m_showUnitlenght) GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
+            if(m_show_grid) GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            if(m_show_axis) GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            if(m_show_unitlenght) GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
 
-            if (m_showPath)
+            if (m_show_path)
             {
                 GetRenderer().DrawLine(glm::vec3{0,0,0}, glm::vec3{50, 0, 0}, glm::vec4{1,0,0,1}, GetCamera(), 5);
             }
 
-            if (m_doSort) 
+            if (m_do_sort) 
             {
                 for (int i = 0; i < m_numOf4DSpltas; ++i)
                 {
@@ -325,46 +334,46 @@ namespace Scenes
 
         void Update(GLFWwindow* hwin) override
         {
-            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_scene_menu = true;
 
-            if (m_doTime) m_time += m_time_speed;
+            if (m_do_time) m_time += m_time_speed;
             if (m_time > m_max_time && m_loop)
             {
                 m_time = 0;
             }
             else if (m_time > m_max_time && !m_loop)
             {
-                m_doTime = false;
+                m_do_time = false;
                 m_time = m_max_time;
             }
         }
 
         void GUI() override
         {
-            if (!m_SceneMenu) return;
-            ImGui::Begin("Linear Scene Menu", &m_SceneMenu);
+            if (!m_scene_menu) return;
+            ImGui::Begin("Linear Scene Menu", &m_scene_menu);
 
             ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
             ImGui::InputFloat("Time Max", &m_max_time);
             ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
 
             ImGui::Checkbox("Loop", &m_loop);
-            ImGui::Checkbox("Sort", &m_doSort);
+            ImGui::Checkbox("Sort", &m_do_sort);
 
             ImGui::NewLine();
 
-            ImGui::Checkbox("Grid", &m_showGrid);
-            ImGui::Checkbox("Axis", &m_showAxis);
-            ImGui::Checkbox("Unit length", &m_showUnitlenght);
-            ImGui::Checkbox("Path", &m_showPath);
+            ImGui::Checkbox("Grid", &m_show_grid);
+            ImGui::Checkbox("Axis", &m_show_axis);
+            ImGui::Checkbox("Unit length", &m_show_unitlenght);
+            ImGui::Checkbox("Path", &m_show_path);
 
             ImGui::NewLine();
 
 
             if (ImGui::Button("Run"))
-                m_doTime = true;
+                m_do_time = true;
             if (ImGui::Button("Stop"))
-                m_doTime = false;
+                m_do_time = false;
             if (ImGui::Button("Reset"))
                 m_time = 0;
 
@@ -378,7 +387,7 @@ namespace Scenes
 
             ImGui::NewLine();
 
-            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_Splat_Speed", &m_splat_speed);
             ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
             ImGui::InputFloat("m_min_opacity", &m_min_opacity);
             ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
@@ -413,7 +422,7 @@ namespace Scenes
     {
     private:
 
-
+        /*Similar setup to liniear motion*/
         std::vector<glm::mat3> m_vModelData;
         std::vector<SplatData> m_sdata;
         std::vector<glm::vec3> m_positions;
@@ -495,10 +504,6 @@ namespace Scenes
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
-            glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
-            glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
-
-
             ModelEdges medge = GetModelExtrema(m_vModelData);
 
             unsigned int s_idx = 0;
@@ -507,8 +512,12 @@ namespace Scenes
                 m_positions.push_back(glm::rotate(glm::vec4{1.0, 0.0, 0.0, 0.0}, glm::radians(float(dt * m_angle_multiplyer)), { 0.0, 1.0, 0.0 }) * m_rotation_radius);
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
+                    /*
+                        Position offset is calculated as a vector rotated arround the origin
+                    */
                     glm::vec3 pos = m_vModelData[i][0];
                     glm::vec4 forward{ 1.0, 0.0, 0.0, 0.0 };
+                    /* timeOffset_next is used for the direction of movement of the splats */
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(forward, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(forward, glm::radians(float((dt+1)* m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     Splat4D s4d{
@@ -672,7 +681,7 @@ namespace Scenes
     {
     private:
 
-
+        /* Same setup as the above */
         std::vector<glm::mat3> m_vModelData;
         std::vector<SplatData> m_sdata;
 
@@ -760,7 +769,12 @@ namespace Scenes
             {
                 for (int i = 0; i < m_vModelData.size(); ++i)
                 {
+                    /* 
+                        Each splats postion is rotated arround the y axis at the origin 
+                        as well as its facing direction to avoid the object chanigin shpae as it rotates
+                    */
                     glm::vec4 pos{ m_vModelData[i][0], 0.0 };
+                    // Position of vertex is rotated arround the y axis arround the origin
                     glm::vec3 timeOffset = glm::vec3{ glm::rotate(pos, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 timeOffset_next = glm::vec3{ glm::rotate(pos, glm::radians(float((dt + 1) * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
                     glm::vec3 norm = glm::vec3{ glm::rotate(glm::vec4{m_vModelData[i][1], 0}, glm::radians(float(dt * m_angle_multiplyer)), {0.0, 1.0, 0.0}) };
@@ -916,7 +930,7 @@ namespace Scenes
     {
     private:
 
-
+        /*Same as above*/
         std::vector<glm::mat3> m_vModelData;
         std::vector<SplatData> m_sdata;
         std::vector<glm::vec3> m_positions;
@@ -1480,6 +1494,8 @@ namespace Scenes
                 m_sdata.push_back({ {10.0f * (-0.5f + RANDOM), 10.0f * (-0.5f + RANDOM), 0, 0}, {RANDOM, RANDOM, RANDOM, 1.0}, R * S * S * glm::transpose(R) });
             }
 
+            /* All of that was used for the smiley face */
+
             /*float global_scalar = 1.0f;
 
             for (int i = 0; i < 60; ++i)
@@ -1616,13 +1632,6 @@ namespace Scenes
 
         const Geometry::Quad quad;
 
-        float m_time = 0.0f;
-        float m_max_time = 90.0f;
-        float m_time_speed = 0.25f;
-        float m_min_opacity = 0.0f;
-
-        bool m_loop = true;
-        bool m_doTime = false;
         bool m_SceneMenu = false;
         bool m_DoSort = false;
 
@@ -1668,7 +1677,6 @@ namespace Scenes
             glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf3DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
 
 
-            /*CLOUDS*/
             Splat4D s4d{
                 {0.0, 0.0, 0.0, 0.0},
                 glm::normalize(glm::quatLookAt(glm::vec3{1.0,0.0,0.0}, {0.0, 1.0, 0.0})),
@@ -1682,8 +1690,6 @@ namespace Scenes
             m_key_buffer_data_pre.push_back(0);
             m_val_buffer_data_pre.push_back(0.0f);
             
-            /*CLOUDS*/
-
 
             glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
             glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf3DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
@@ -1729,8 +1735,6 @@ namespace Scenes
             }
 
             m_S4DShaderInstanced.Bind();
-            m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
-            m_S4DShaderInstanced.SetUniform1f("uMinOpacity", m_min_opacity);
             m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
             m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
 
@@ -1743,46 +1747,12 @@ namespace Scenes
         void Update(GLFWwindow* hwin) override
         {
             if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
-
-            if (m_doTime) m_time += m_time_speed;
-            if (m_time > m_max_time && m_loop)
-            {
-                m_time = 0;
-            }
-            else if (m_time > m_max_time && !m_loop)
-            {
-                m_doTime = false;
-                m_time = m_max_time;
-            }
         }
 
         void GUI() override
         {
             if (!m_SceneMenu) return;
             ImGui::Begin("Combination Scene Menu", &m_SceneMenu);
-
-            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
-            ImGui::InputFloat("Time Max", &m_max_time);
-            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
-
-            ImGui::Checkbox("Loop", &m_loop);
-            ImGui::Checkbox("Sort", &m_DoSort);
-
-            ImGui::NewLine();
-
-
-            if (ImGui::Button("Run"))
-                m_doTime = true;
-            if (ImGui::Button("Stop"))
-                m_doTime = false;
-            if (ImGui::Button("Reset"))
-                m_time = 0;
-
-            ImGui::NewLine();
-
-            ImGui::InputFloat("m_min_opacity", &m_min_opacity);
-
-            ImGui::NewLine();
 
             if (ImGui::Button("Reload Scene"))
             {
@@ -1793,12 +1763,11 @@ namespace Scenes
 
             ImGui::End();
         }
-
-
     };
 
     /*
         4D Gaussian showcase scene.
+        A single gaussian that demostrates motion in time and change in opaicty
     */
     class Gaussians4D : public Scene
     {
@@ -1823,6 +1792,8 @@ namespace Scenes
         bool m_doTime = false;
         bool m_SceneMenu = false;
         bool m_show_axis = false;
+
+        bool m_show_splat_menu = false;
 
     public:
         Gaussians4D(Renderer& r, Camera& c) : Scene(r, c)
@@ -1856,11 +1827,7 @@ namespace Scenes
                 glm::vec3{ 1,1,1 } * 5.0f,
                 glm::vec4{ 1.0, 1.0, 1.0, 1.0 } });
 
-            //glm::quat q0 = glm::quatLookAt(glm::vec3{1, 2, 1}, glm::vec3{0, 1, 0});
-            //glm::quat q1 = glm::quatLookAt(glm::vec3{1, -1, 0}, glm::vec3{0,1,0});
-            //m_s4ds.push_back({ glm::vec4{0, 0, 0, 0}, q0, q1, glm::vec4{10, 10, 10, 1}, glm::vec4{1,1,1,1} });
-
-            for (Splat4D &s4d : m_s4ds) 
+            for (Splat4D &s4d : m_s4ds)
             {
                 m_sdata.push_back({ s4d.GetPosititon(), s4d.GetColor(), s4d.GetGeoInfo() });
             }
@@ -1900,7 +1867,6 @@ namespace Scenes
                 {
                     s4d.SetTime(m_time);
                     s4d.DrawAxis(GetRenderer(), GetCamera());
-                    //GetRenderer().DrawLine(s4d.GetMeanInTime(), glm::vec3{1, 2, 1}, glm::vec4{1.0f , 0.0f, 1.0f, 1.0f});
                 }
             }
             
@@ -2488,7 +2454,7 @@ namespace Scenes
 
 
     /*
-        Trying to break motion.
+        Displaying some objects exported from blender
     */
     class ObjectDisplay : public Scene
     {

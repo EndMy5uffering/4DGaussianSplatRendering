@@ -1,3 +1,8 @@
+/*
+	Simple frag shader that takes in the color of a Gaussian 
+	and then caluclates the opacity for every pixel
+*/
+
 #version 440 core
 
 layout(location = 0) out vec4 color;

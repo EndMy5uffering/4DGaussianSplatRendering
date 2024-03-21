@@ -33,8 +33,9 @@ vec2 GetEigenValues2x2(mat2 mat)
 
 mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues) 
 {
-    float offdiag = mat[0][1];
-    vec2 eigenVec0 = normalize(vec2( (-offdiag) / (mat[0][0] - eigenValues[0]) , 1 ));
+    // https://math.stackexchange.com/questions/395698/fast-way-to-calculate-eigen-of-2x2-matrix-using-a-formula
+
+    vec2 eigenVec0 = normalize(vec2( mat[0][1], eigenValues[0] - mat[0][0] ));
     vec2 eigenVec1 = vec2( eigenVec0.y, -eigenVec0.x );
     return mat2(normalize(eigenVec0), normalize(eigenVec1));
 }

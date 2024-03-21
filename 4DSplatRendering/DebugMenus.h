@@ -30,15 +30,6 @@ constexpr float RAD_RANGE = 2.0f * 3.1415926535f;
 namespace DebugMenus
 {
 
-    struct Splat2DMenuData {
-        float angle = 0.0f;
-        float l0 = 0.0f;
-        float l1 = 0.0f;
-        glm::vec3 splatPos{0.0,0.0,0.0};
-        float color[3] = {0.0f, 0.0f, 0.0f};
-        bool is_Showing = true;
-    };
-
     struct Menu02Data {
         std::string buffer{};
         std::vector<Shader*> shaders;
@@ -46,6 +37,7 @@ namespace DebugMenus
         int selectedSourceIdx = -1;
     };
 
+    /*Different blend options as text mapping for menue*/
     struct BlendOpt {
         size_t selected0 = GL_SRC_ALPHA;
         size_t selected1 = GL_ONE_MINUS_SRC_ALPHA;
@@ -67,6 +59,7 @@ namespace DebugMenus
         };
     };
 
+    /*To enable or discable submenus*/
     struct MenueStripData {
         bool show_2DSplat = false;
         bool show_3DSplat = false;
@@ -78,6 +71,7 @@ namespace DebugMenus
         std::unique_ptr<Scene> u_scene_ptr;
     };
 
+    /*Not in use as the 2D scene has more then 1 splat*/
 	void Splat2DMenu(Splat2D* data, bool* is_Showing)
 	{
         if (!*is_Showing) return;
@@ -108,6 +102,7 @@ namespace DebugMenus
         ImGui::End();
 	}
 
+    /*Simple overview of the camera data*/
     void CamInfo(ImGuiIO& io, Camera& cam, bool* is_Showing)
     {
         if (!*is_Showing) return;
@@ -122,13 +117,7 @@ namespace DebugMenus
         ImGui::End();
     }
 
-    void TextScreen(const std::string &name, std::string& info)
-    {
-        ImGui::Begin(name.c_str());
-        ImGui::Text(info.c_str());
-        ImGui::End();
-    }
-
+    /*Currently not in use as there is no scene with a single 3D Gaussian*/
     void Splat3DMenu(Splat3D* splat, bool* is_Showing)
     {
         if (!*is_Showing) return;
@@ -174,7 +163,8 @@ namespace DebugMenus
         ImGui::End();
     }
 
-    void Splat4DMenu(Splat4D* splat, Camera* cam, bool* is_Showing)
+    /*Currently also not in use as there is no scene with a single splat*/
+    void Splat4DMenu(Splat4D* splat, bool* is_Showing)
     {
         if (!*is_Showing) return;
 
@@ -211,15 +201,13 @@ namespace DebugMenus
         splat->SetColor(V4FromArray(c));
 
         ImGui::NewLine();
-
-        bool isCamOnSplat = cam->IsViewFixed();
-        bool isPosFixed = cam->IsPositionFixed();
             
         ImGui::Checkbox("Helper Lines", &splat->drawHelperAxis);
 
         ImGui::End();
     }
 
+    /*Only for debug to test different blend functions on runtime*/
     void BlendOptMenu(BlendOpt* data, bool* is_Showing)
     {
         if (!*is_Showing) return;
@@ -285,6 +273,7 @@ namespace DebugMenus
         ImGui::End();
     }
 
+    /*No longer in use*/
     void ShaderEditor(Menu02Data *data, bool* is_Showing)
     {
         if (!*is_Showing) return;
@@ -360,6 +349,7 @@ namespace DebugMenus
         ImGui::End();
     }
 
+    /*Menu bar at the top of the screen*/
     void MainMenuStrip(MenueStripData* data, Renderer& renderer, Camera& cam) 
     {
         ImGui::BeginMainMenuBar();

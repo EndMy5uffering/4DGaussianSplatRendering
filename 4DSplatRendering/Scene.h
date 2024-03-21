@@ -1,5 +1,7 @@
 #pragma once
 
+/*Base class for the scenes*/
+
 class Scene
 {
 private:

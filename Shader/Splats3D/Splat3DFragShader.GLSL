@@ -1,3 +1,6 @@
+/*
+	Old frag shader used for billboard
+*/
 #version 440 core
 
 layout(location = 0) out vec4 color;

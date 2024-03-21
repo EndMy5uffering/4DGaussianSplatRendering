@@ -1,6 +1,8 @@
 #version 440 core
 
 #define iData data[gl_InstanceID]
+//#define WORLD_SPACE_POS //Makes the splats stick to world space position
+#define SCREEN_SPACE_POS //Makes the splats stick to screen space position
 
 struct SplatData
 {
@@ -43,6 +45,7 @@ vec2 GetEigenValues2x2(mat2 mat)
 
 mat2 GetEigenVectors2x2(mat2 mat, vec2 eigenValues) 
 {
+    // https://math.stackexchange.com/questions/395698/fast-way-to-calculate-eigen-of-2x2-matrix-using-a-formula
     if(mat[0][1] == 0)
     {
         return mat2(vec2(1, 0), vec2(0, 1));      
@@ -75,9 +78,15 @@ void main()
     eigenVals = vec2(l0, l1);
     mat2 _Sig = inverse(R * S * S * transpose(R));
 
+#ifdef WORLD_SPACE_POS
+    gl_Position = (uView * vec4(R * S * iVPos.xy, 0.0, 1.0)) + posCamSpace;
+    gl_Position = uProj * gl_Position; 
+#endif // WORLD_SPACE_POS
+#ifdef SCREEN_SPACE_POS
     gl_Position = vec4(R * S * iVPos.xy, -5.0, 1.0);
+    gl_Position = uProj * (gl_Position + posScreenSpace); //Makes them stick to screen space position
+#endif // SCREEN_SPACE_POS
     oFragPos = vec4(R * 8 * S * iVPos.xy, 0.0, 1.0);
-    gl_Position = uProj * gl_Position + uProj * posCamSpace;
     //oFragPos = gl_Position;
     oSSPos = posScreenSpace.xy;
     oSig = _Sig;

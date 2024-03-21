@@ -78,12 +78,6 @@
     <ClCompile Include="..\Dependencies\SIMPLEX_NOISE\SimplexNoise.cpp">
       <Filter>noise</Filter>
     </ClCompile>
-    <ClCompile Include="STB_Image.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Texture.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Camera.h">
@@ -166,9 +160,6 @@
     </ClInclude>
     <ClInclude Include="..\Dependencies\SIMPLEX_NOISE\SimplexNoise.h">
       <Filter>noise</Filter>
-    </ClInclude>
-    <ClInclude Include="Texture.h">
-      <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

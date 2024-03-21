@@ -1,3 +1,6 @@
+// Used for presorted splat data (BSPTree presorting)
+// Only difference to the normal vertex shader is the missing index buffer
+
 #version 440 core
 
 #define iData data[gl_InstanceID]
