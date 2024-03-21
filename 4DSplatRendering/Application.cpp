@@ -56,7 +56,6 @@
 #include "Scenes.h"
 #include "DebugMenus.h"
 
-
 int SCREEN_WIDTH = 800;
 int SCREEN_HEIGHT = 800;
 Camera cam(SCREEN_WIDTH, SCREEN_HEIGHT, { 70, 110, 110 }, glm::normalize(glm::vec3{0, -1.0, -1.0}));
@@ -84,6 +83,7 @@ int main(void)
     //glfwWindowHint(GLFW_MAXIMIZED, 1);
     //glfwWindowHint(GLFW_SAMPLES, 8);
     //glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    //glfwSwapInterval(0); //Disable vsync
 
     /* Create a windowed mode window and its OpenGL context */
     window = glfwCreateWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "4D Gaussian Splats", NULL, NULL);
@@ -95,7 +95,6 @@ int main(void)
 
     /* Make the window's context current */
     glfwMakeContextCurrent(window); 
-    glfwSwapInterval(0); //Disable vsync
 
     if (glewInit() != GLEW_OK) 
     {
@@ -142,7 +141,6 @@ int main(void)
     menueStripData.cam = &cam;
     menueStripData.u_scene_ptr = std::make_unique<Scenes::Empty>(renderer, cam);
     menueStripData.u_scene_ptr->init();
-
 
     while (!glfwWindowShouldClose(window))
     {

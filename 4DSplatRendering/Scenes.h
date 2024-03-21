@@ -83,6 +83,24 @@ namespace Scenes
         return { minpos, maxpos };
     }
 
+    static ModelEdges GetModelExtrema(std::vector<VData::VSplatData>& model)
+    {
+        glm::vec3 maxpos{-INFINITY, -INFINITY, -INFINITY};
+        glm::vec3 minpos{INFINITY, INFINITY, INFINITY};
+
+        for (int i = 0; i < model.size(); ++i)
+        {
+            glm::vec3 pos = model[i].pos;
+            maxpos.x = Utils::maxf(pos.x, maxpos.x);
+            maxpos.y = Utils::maxf(pos.y, maxpos.y);
+            maxpos.z = Utils::maxf(pos.z, maxpos.z);
+            minpos.x = Utils::minf(pos.x, minpos.x);
+            minpos.y = Utils::minf(pos.y, minpos.y);
+            minpos.z = Utils::minf(pos.z, minpos.z);
+        }
+        return { minpos, maxpos };
+    }
+
     /*
         Empty demo scene to start the programm on.
     */
@@ -2453,6 +2471,229 @@ namespace Scenes
             ImGui::InputFloat("m_splat_scale_x", &m_splat_scale_x);
             ImGui::InputFloat("m_splat_scale_y", &m_splat_scale_y);
             ImGui::InputFloat("m_splat_scale_z", &m_splat_scale_z);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Reload Scene"))
+            {
+                unload();
+                init();
+            }
+
+
+            ImGui::End();
+        }
+
+    };
+
+
+    /*
+        Trying to break motion.
+    */
+    class ObjectDisplay : public Scene
+    {
+    private:
+
+        std::vector<VData::VSplatData> m_vModelData;
+        std::vector<SplatData> m_sdata;
+
+        GLuint m_key_buf = 0;
+        GLuint m_values_buf = 0;
+
+        std::unique_ptr< ShareStorageBuffer > m_ssbo_splat_data;
+        std::unique_ptr< radix_sort::sorter > m_sorter;
+
+        std::vector<GLuint> m_key_buffer_data_pre;
+        std::vector<GLfloat> m_val_buffer_data_pre;
+
+        Shader m_S4DShaderInstanced;
+        unsigned int m_numOf4DSpltas = 0;
+
+        const Geometry::Quad quad;
+
+        float m_time = 0.0f;
+        float m_max_time = 90.0f;
+        float m_time_speed = 0.25f;
+        float m_min_opacity = 0.0f;
+        float m_Splat_Speed = 1.0f;
+        float m_splat_lifetime = 1.0f;
+        float m_splat_fade_offset = 0.5f;
+        float m_square_size = 40.0f;
+        int m_steps_in_time = 1;
+
+        float m_object_scale = 1.0f;
+
+        bool m_loop = true;
+        bool m_doTime = false;
+        bool m_SceneMenu = false;
+
+        bool m_DoSort = true;
+
+        bool m_showGrid = true;
+        bool m_showAxis = true;
+        bool m_showUnitlenght = true;
+
+    public:
+        ObjectDisplay(Renderer& r, Camera& c) : Scene(r, c)
+        {
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DFragShader.GLSL", GL_FRAGMENT_SHADER);
+            m_S4DShaderInstanced.AddShaderSource("../Shader/Splats4D/Splat4DVertexShaderInstanced.GLSL", GL_VERTEX_SHADER);
+            m_S4DShaderInstanced.BuildShader();
+        }
+        ~ObjectDisplay()
+        {
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+        }
+
+        void init() override
+        {
+            GetCamera().SetPosition({ 0, 60, 60 });
+            GetCamera().SetOrientation({ 0.0, -1.0, -1.0 });
+            std::cout << "Init: Scenes::ObjectDisplay\n";
+            m_vModelData = VData::parse_splat_data("../Objects/Mage.sd");
+            m_numOf4DSpltas = m_vModelData.size() * m_steps_in_time;
+            m_sdata.clear();
+            m_sdata.reserve(m_numOf4DSpltas);
+
+            m_key_buffer_data_pre.clear();
+            m_key_buffer_data_pre.reserve(m_numOf4DSpltas);
+            m_val_buffer_data_pre.clear();
+            m_val_buffer_data_pre.reserve(m_numOf4DSpltas);
+
+            glGenBuffers(1, &m_key_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(unsigned int), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            glGenBuffers(1, &m_values_buf);
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+            glBufferStorage(GL_SHADER_STORAGE_BUFFER, m_numOf4DSpltas * sizeof(float), nullptr, GL_DYNAMIC_STORAGE_BIT);
+
+            ModelEdges medge = GetModelExtrema(m_vModelData);
+
+            unsigned int s_idx = 0;
+            for (int dt = 0; dt < m_steps_in_time; ++dt)
+            {
+                for (int i = 0; i < m_vModelData.size(); ++i)
+                {
+                    m_sdata.push_back({ glm::vec4{m_object_scale * m_vModelData[i].pos, 0.0}, m_vModelData[i].color, m_vModelData[i].cov });
+                    m_key_buffer_data_pre.push_back(s_idx);
+                    m_val_buffer_data_pre.push_back(0.0f);
+                    ++s_idx;
+                }
+            }
+
+            glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+            glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+            m_sorter = std::make_unique< radix_sort::sorter >(m_numOf4DSpltas);
+            m_ssbo_splat_data = std::make_unique< ShareStorageBuffer >(m_sdata.data(), m_numOf4DSpltas * sizeof(SplatData));
+            std::cout << "Done Init: Scenes::ObjectDisplay\n";
+        }
+
+        void unload() override
+        {
+            std::cout << "Unloading Scenes::ObjectDisplay\n";
+            m_ssbo_splat_data.reset();
+            m_sorter.reset();
+            if (m_key_buf) GLCall(glDeleteBuffers(1, &m_key_buf));
+            if (m_values_buf) GLCall(glDeleteBuffers(1, &m_values_buf));
+            std::cout << "Done unloading Scenes::ObjectDisplay\n";
+        }
+
+        void Render() override
+        {
+
+            if (m_showGrid) GetRenderer().DrawGrid(2000, 2000, 200, 200, { 1,1,1,0.15 }, GetCamera(), 1);
+            if (m_showAxis) GetRenderer().DrawAxis(GetCamera(), 500.0f, 3.0f);
+            if (m_showUnitlenght) GetRenderer().DrawLine({ 0.0, 0.0, 0.0 }, { 1.0, 0.0, 0.0 }, { 1.0, 1.0, 1.0, 1.0 }, GetCamera(), 5.0f);
+
+            if (m_DoSort)
+            {
+                for (int i = 0; i < m_numOf4DSpltas; ++i)
+                {
+                    m_key_buffer_data_pre[i] = i;
+                    glm::vec4 tmp = m_sdata[i].GetMeanInTime(m_time) - glm::vec4(GetCamera().GetPosition(), 1);
+                    m_val_buffer_data_pre[i] = 1.0f / sqrtf(tmp.x * tmp.x + tmp.y * tmp.y + tmp.z * tmp.z);
+                }
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_key_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLuint), m_key_buffer_data_pre.data());
+
+                glBindBuffer(GL_SHADER_STORAGE_BUFFER, m_values_buf);
+                glBufferSubData(GL_SHADER_STORAGE_BUFFER, 0, m_numOf4DSpltas * sizeof(GLfloat), m_val_buffer_data_pre.data());
+
+                m_sorter->sort(m_values_buf, m_key_buf, m_numOf4DSpltas);
+            }
+
+            m_S4DShaderInstanced.Bind();
+            m_S4DShaderInstanced.SetUniform1f("uTime", m_time);
+            m_S4DShaderInstanced.SetUniform1f("uMinOpacity", m_min_opacity);
+            m_S4DShaderInstanced.SetUniformMat4f("uView", GetCamera().GetViewMatrix());
+            m_S4DShaderInstanced.SetUniformMat4f("uProj", GetCamera().GetProjMatrix());
+
+            GLCall(glBindBufferBase(GL_SHADER_STORAGE_BUFFER, 1, m_key_buf));
+            m_ssbo_splat_data->Bind(2);
+
+            GetRenderer().Draw(quad.QuadVA, quad.QuadIdxBuffer, m_numOf4DSpltas);
+
+        }
+
+        void Update(GLFWwindow* hwin) override
+        {
+            if (glfwGetKey(hwin, GLFW_KEY_M) == GLFW_PRESS) m_SceneMenu = true;
+
+            if (m_doTime) m_time += m_time_speed;
+            if (m_time > m_max_time && m_loop)
+            {
+                m_time = 0;
+            }
+            else if (m_time > m_max_time && !m_loop)
+            {
+                m_doTime = false;
+                m_time = m_max_time;
+            }
+        }
+
+        void GUI() override
+        {
+            if (!m_SceneMenu) return;
+            ImGui::Begin("Square Scene Menu", &m_SceneMenu);
+
+            ImGui::SliderFloat("Time Speed", &m_time_speed, -2.0f, 2.0f);
+            ImGui::InputFloat("Time Max", &m_max_time);
+            ImGui::SliderFloat("Time", &m_time, 0.0f, m_max_time);
+
+            ImGui::Checkbox("Loop", &m_loop);
+            ImGui::Checkbox("Sort", &m_DoSort);
+
+            ImGui::NewLine();
+
+            ImGui::Checkbox("Grid", &m_showGrid);
+            ImGui::Checkbox("Axis", &m_showAxis);
+            ImGui::Checkbox("Unit length", &m_showUnitlenght);
+
+            ImGui::NewLine();
+
+            if (ImGui::Button("Run"))
+                m_doTime = true;
+            if (ImGui::Button("Stop"))
+                m_doTime = false;
+            if (ImGui::Button("Reset"))
+                m_time = 0;
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_Splat_Speed", &m_Splat_Speed);
+            ImGui::InputFloat("m_splat_lifetime", &m_splat_lifetime);
+            ImGui::InputFloat("m_min_opacity", &m_min_opacity);
+            ImGui::InputFloat("m_splat_fade_offset", &m_splat_fade_offset);
+            ImGui::InputInt("m_steps_in_time", &m_steps_in_time);
+            ImGui::InputFloat("m_square_size", &m_square_size);
+
+            ImGui::NewLine();
+
+            ImGui::InputFloat("m_object_scale", &m_object_scale);
 
             ImGui::NewLine();
 

@@ -76,7 +76,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\SIMPLEX_NOISE\;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -94,7 +94,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\SIMPLEX_NOISE\;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -112,7 +112,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\SIMPLEX_NOISE\;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -130,7 +130,7 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>GLEW_STATIC</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)Dependencies\SIMPLEX_NOISE\;$(SolutionDir)Dependencies\glm;$(SolutionDir)Dependencies\GLFW\include;$(SolutionDir)Dependencies\STB\;$(SolutionDir)Dependencies\GLEW\include;$(SolutionDir)Dependencies\IMGUI\;$(SolutionDir)Dependencies\GPU_RADIX_SORT\;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
     </ClCompile>
     <Link>
@@ -151,12 +151,15 @@
     <ClCompile Include="..\Dependencies\IMGUI\imgui_stdlib.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_tables.cpp" />
     <ClCompile Include="..\Dependencies\IMGUI\imgui_widgets.cpp" />
+    <ClCompile Include="..\Dependencies\SIMPLEX_NOISE\SimplexNoise.cpp" />
     <ClCompile Include="Application.cpp" />
     <ClCompile Include="Camera.cpp" />
     <ClCompile Include="IndexBuffer.cpp" />
     <ClCompile Include="Renderer.cpp" />
     <ClCompile Include="Shader.cpp" />
     <ClCompile Include="ShareStorageBuffer.cpp" />
+    <ClCompile Include="STB_Image.cpp" />
+    <ClCompile Include="Texture.cpp" />
     <ClCompile Include="Utils.cpp" />
     <ClCompile Include="VertexArray.cpp" />
     <ClCompile Include="VertexBuffer.cpp" />
@@ -172,6 +175,7 @@
     <ClInclude Include="..\Dependencies\IMGUI\imstb_rectpack.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_textedit.h" />
     <ClInclude Include="..\Dependencies\IMGUI\imstb_truetype.h" />
+    <ClInclude Include="..\Dependencies\SIMPLEX_NOISE\SimplexNoise.h" />
     <ClInclude Include="BSPTree.h" />
     <ClInclude Include="Camera.h" />
     <ClInclude Include="DebugMenus.h" />
@@ -183,6 +187,7 @@
     <ClInclude Include="Shader.h" />
     <ClInclude Include="ShareStorageBuffer.h" />
     <ClInclude Include="Splat.h" />
+    <ClInclude Include="Texture.h" />
     <ClInclude Include="Utils.h" />
     <ClInclude Include="VDataParser.h" />
     <ClInclude Include="VertexArray.h" />

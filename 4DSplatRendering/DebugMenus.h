@@ -433,6 +433,7 @@ namespace DebugMenus
             if (ImGui::Button("4D Gaussians")) { SwapScene(Scenes::Gaussians4D) }
             if (ImGui::Button("Modulo Motion")) { SwapScene(Scenes::BrokenMotion) }
             if (ImGui::Button("Square Motion")) { SwapScene(Scenes::SquareMotion) }
+            if (ImGui::Button("Object Display")) { SwapScene(Scenes::ObjectDisplay) }
                 
 
             ImGui::NewLine();
